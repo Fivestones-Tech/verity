@@ -219,6 +219,21 @@ try {
   check(teacherView.includes("Adaeze Okafor") && teacherView.includes("Submitted"), "teacher sees the submitted result");
   await shot(t, "13-teacher-results");
 
+  // ---------------- teacher sets a weekly mock (whole syllabus) ----------------
+  await t.goto(`${BASE}/inst/assessments/new?kind=mock`);
+  await t.waitForLoadState("networkidle");
+  check((await t.inputValue("#duration_minutes")) === "30", "JAMB maths mock defaults to 30 minutes");
+  check((await t.inputValue("#question_count")) === "12", "mock size capped at the 12 published questions");
+  check((await t.inputValue("#name")).endsWith("mock"), "mock name suggested");
+  await shot(t, "14-mock-builder");
+  await t.getByRole("button", { name: "Create and open now" }).click();
+  await t.waitForURL(/\/inst\/assessments\/[0-9a-f-]+\?created=1/);
+  check((await t.locator("main").innerText()).toLowerCase().includes("· mock"), "mock created and labelled");
+  await s.goto(`${BASE}/app`);
+  await s.waitForLoadState("networkidle");
+  check((await s.locator("main").innerText()).includes("· mock"), "student sees the mock on the home screen");
+  await shot(s, "15-student-home-with-mock");
+
   await phone.close(); // flushes the video
   await ownerCtx.close();
   await teacherCtx.close();

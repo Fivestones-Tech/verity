@@ -5,8 +5,8 @@
 ## Current state
 
 - **Current phase:** Pilot slice built (Phases 0–3 + topic_performance). See `docs/13`.
-- **Last completed task:** Timed topic tests end to end (2026-11-22)
-- **Next task:** Before Jan 11: create the hosted Supabase project + Vercel deploy, apply migrations, register the pilot centre. Then weekly full mocks (Jan 25) and Phase 4 readiness + teacher views (Jan 31).
+- **Last completed task:** One-subject weekly mocks (2026-11-22)
+- **Next task:** Before Jan 11: create the hosted Supabase project + Vercel deploy, apply migrations, register the pilot centre. Then Phase 4 readiness + teacher views (Jan 31), and the full JAMB sitting (English + 3 subjects, 2 h) before end of Feb.
 - **Blocked on / waiting for founder:** see "Open questions" below
 
 ## Open questions for the founder
@@ -29,6 +29,12 @@ Format:
 - Decisions/assumptions: anything the founder should know
 - Next: the very next task
 ```
+
+### 2026-11-22 — Weekly mocks (one subject per mock)
+- Did: `assessment_type = 'mock'` from the builder (`/inst/assessments/new?kind=mock`). The server picks topics from the whole syllabus (form topic ids ignored). Defaults in `lib/assessments/kinds.ts`: JAMB English 60 Q / 40 min, other JAMB subjects 40 Q / 30 min, WAEC 50 Q / 60 min; teachers can change them. Mocks are labelled on the tests list, results, instructions and student home.
+- Verified: 54 unit, 36 integration (new `mocks.test.ts`: whole syllabus, ignores another centre's topic ids, refuses oversize), e2e incl. mock creation, lint, typecheck, build.
+- Decisions/assumptions: founder chose "both": one-subject mocks now, full JAMB sitting (English + the student's 3 subjects, 180 Q, 2 h) next. No schema change.
+- Next: full JAMB sitting (needs each student's subject combination), hosted environments, Phase 4.
 
 ### 2026-11-22 — Pilot slice — timed topic tests for the tutorial-centre pilot
 - Did: Next.js 16 + Supabase app. Migrations `supabase/migrations/20261122000100_pilot_core.sql` (schema, RLS on every table, server-only write functions) and `..._seed_exams_subjects.sql` (JAMB + WAEC, 11 subjects). Centre registration, staff, classes, student CSV import with sign-in slips, question CSV import (validate → preview → confirm) and single-question form, second-person review, topic-test builder, CBT taking screen with IndexedDB answers + sync engine + service worker, server scoring, result slip with topic breakdown + next step + mistake review, teacher results with CSV export.

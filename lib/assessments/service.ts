@@ -41,20 +41,39 @@ async function expandTopics(staff: StaffContext, subjectId: string, topicIds: st
   return groupOf;
 }
 
-export async function createTopicTest(staff: StaffContext, v: Input) {
+/** Top-level topics of a subject this centre can use (platform + its own). */
+async function topLevelTopicIds(staff: StaffContext, subjectId: string) {
+  const admin = createSupabaseAdminClient();
+  const { data } = await admin
+    .from("topics")
+    .select("id")
+    .eq("subject_id", subjectId)
+    .is("parent_topic_id", null)
+    .or(`institution_id.is.null,institution_id.eq.${staff.institution.id}`);
+  return (data ?? []).map((t) => t.id as string);
+}
+
+/** Creates a topic test, or a one-subject mock drawn from the whole syllabus. */
+export async function createAssessment(staff: StaffContext, v: Input) {
   const subjects = await loadSubjects(staff.institution.exam_focus);
   const subject = subjects.find((s) => s.id === v.subject_id);
   if (!subject) throw new DomainError("invalid_subject", "Choose one of your centre's subjects.");
-  const groupOf = await expandTopics(staff, subject.id, v.topic_ids);
+  const isMock = v.kind === "mock";
+  // never trust topic ids from the form for a mock: the server decides the syllabus
+  const topicIds = isMock ? await topLevelTopicIds(staff, subject.id) : v.topic_ids;
+  if (topicIds.length === 0) throw new DomainError("no_topics", "This subject has no topics yet. Import questions first.");
+  const groupOf = await expandTopics(staff, subject.id, topicIds);
 
   const pool = (await questionPool(staff, subject.id))
     .filter((q) => groupOf.has(q.topic_id))
     .map((q) => ({ ...q, topic_id: groupOf.get(q.topic_id)! }));
-  const picked = pickQuestions(pool, { topicIds: v.topic_ids, count: v.question_count, difficulties: v.difficulties });
+  const picked = pickQuestions(pool, { topicIds, count: v.question_count, difficulties: v.difficulties });
   if (picked.shortBy > 0) {
     throw new DomainError(
       "not_enough_questions",
-      `There are only ${picked.ids.length} published questions for these topics${v.difficulties.length ? " and difficulty" : ""}. Choose ${picked.ids.length} or fewer questions, add topics, or publish more questions.`,
+      isMock
+        ? `There are only ${picked.ids.length} published ${subject.name} questions${v.difficulties.length ? " at this difficulty" : ""}. Choose ${picked.ids.length} or fewer questions, or publish more questions.`
+        : `There are only ${picked.ids.length} published questions for these topics${v.difficulties.length ? " and difficulty" : ""}. Choose ${picked.ids.length} or fewer questions, add topics, or publish more questions.`,
     );
   }
 
@@ -78,7 +97,7 @@ export async function createTopicTest(staff: StaffContext, v: Input) {
       examination_id: subject.examination_id,
       subject_id: subject.id,
       name: v.name,
-      assessment_type: "topic_test",
+      assessment_type: isMock ? "mock" : "topic_test",
       duration_seconds: v.duration_minutes * 60,
       question_count: picked.ids.length,
       attempt_limit: 1,
@@ -111,7 +130,7 @@ export async function createTopicTest(staff: StaffContext, v: Input) {
     action: v.open_now ? "assessment.published" : "assessment.created",
     resourceType: "assessment",
     resourceId: a.id,
-    metadata: { questions: picked.ids.length, per_topic: picked.perTopic, assign_to: v.assign_to },
+    metadata: { kind: v.kind, questions: picked.ids.length, per_topic: picked.perTopic, assign_to: v.assign_to },
   });
   return a.id as string;
 }

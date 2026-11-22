@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { kindLabel } from "@/lib/assessments/kinds";
 import { notFound } from "next/navigation";
 import { requireStudentPage } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -15,7 +16,7 @@ export default async function InstructionsPage({ params }: PageProps<"/app/asses
   // RLS: only returns the test if it is assigned to this student
   const { data: t } = await supabase
     .from("assessments")
-    .select("id, name, status, duration_seconds, end_at, instructions, attempt_limit, subject:subjects(name), question_count")
+    .select("id, name, assessment_type, status, duration_seconds, end_at, instructions, attempt_limit, subject:subjects(name), question_count")
     .eq("id", id)
     .maybeSingle();
   if (!t) notFound();
@@ -26,7 +27,7 @@ export default async function InstructionsPage({ params }: PageProps<"/app/asses
 
   return (
     <div className="mx-auto max-w-xl">
-      <p className="eyebrow">{a.subject?.name} · topic test</p>
+      <p className="eyebrow">{a.subject?.name} · {kindLabel(a.assessment_type)}</p>
       <h1 className="mt-1 font-serif text-3xl">{a.name}</h1>
       <Card className="mt-5">
         <dl className="grid grid-cols-2 gap-y-3">
