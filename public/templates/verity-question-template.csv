@@ -1,0 +1,3 @@
+question_text,option_a,option_b,option_c,option_d,correct_option,subject,topic,subtopic,difficulty,explanation,source,exam,year_reference
+"Solve for x: 2x + 6 = 14",2,4,6,8,B,Mathematics,Algebra,Linear equations,easy,"Subtract 6 from both sides to get 2x = 8, then divide by 2 to get x = 4.",original,JAMB,
+"Choose the word nearest in meaning to the underlined word: The manager was very TACITURN at the meeting.",talkative,reserved,angry,cheerful,B,Use of English,Vocabulary,Synonyms,moderate,"Taciturn means saying very little, so ""reserved"" is closest. ""Talkative"" is the opposite.",original,JAMB,
