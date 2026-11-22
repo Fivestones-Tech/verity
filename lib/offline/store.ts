@@ -40,6 +40,8 @@ export type LocalQuestion = {
   attemptId: string;
   questionId: string;
   number: number;
+  /** subject name; set for every question, used to group a full JAMB sitting */
+  subject?: string;
   text: string;
   options: { id: string; label: "A" | "B" | "C" | "D"; text: string }[];
 };

@@ -1,3 +1,3 @@
-full_name,student_number,class
-Adaeze Okafor,VB001,JAMB Batch A
-Tunde Bakare,VB002,JAMB Batch A
+full_name,student_number,class,subjects
+Adaeze Okafor,VB001,JAMB Batch A,Physics; Chemistry; Biology
+Tunde Bakare,VB002,JAMB Batch A,Government; Literature in English; CRS

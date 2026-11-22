@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { addStudentAction, resetPasswordAction, type SlipState } from "./actions";
+import { addStudentAction, resetPasswordAction, setSubjectsAction, type SlipState, type SubjectsState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/card";
 import { Field, SelectField } from "@/components/ui/field";
@@ -34,6 +34,25 @@ export function ResetPasswordButton({ studentId, centreCode, centreName }: { stu
       <input type="hidden" name="student_id" value={studentId} />
       <button disabled={pending} className="min-h-11 text-sm text-pine underline">{pending ? "Resetting…" : "Reset password"}</button>
       {state.error && <p className="text-sm">⚠ {state.error}</p>}
+    </form>
+  );
+}
+
+/** The 3 JAMB subjects besides English. */
+export function SubjectsForm({ studentId, studentName, subjects, current }: { studentId: string; studentName: string; subjects: { id: string; name: string }[]; current: string[] }) {
+  const [state, action, pending] = useActionState<SubjectsState, FormData>(setSubjectsAction, { error: null });
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="student_id" value={studentId} />
+      {[0, 1, 2].map((i) => (
+        <select key={i} name="subject_id" defaultValue={current[i] ?? ""} aria-label={`Subject ${i + 1} for ${studentName}`} className="min-h-9 max-w-40 rounded-[3px] border border-paper-line bg-paper px-2">
+          <option value="">—</option>
+          {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      ))}
+      <button disabled={pending} className="font-mono text-xs uppercase text-pine">{pending ? "Saving…" : "Save"}</button>
+      {state.saved && !pending && <span className="text-sm text-lo">Saved</span>}
+      {state.error && <span className="text-sm">⚠ {state.error}</span>}
     </form>
   );
 }

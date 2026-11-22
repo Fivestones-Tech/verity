@@ -30,3 +30,11 @@ export function mockDefaults(examCode: string, subjectCode: string): { questions
   if (subjectCode === "ENG") return { questions: 60, minutes: 40 };
   return { questions: 40, minutes: 30 };
 }
+
+/** Full JAMB UTME sitting: English plus the student's 3 subjects in one 2-hour sitting. */
+export const JAMB_SITTING = { englishQuestions: 60, otherQuestions: 40, minutes: 120, subjectsPerStudent: 3, englishCode: "ENG" } as const;
+
+/** Label shown on screens: a full JAMB sitting reads differently from a one-subject mock. */
+export function testLabel(type: string | null | undefined, format?: string | null) {
+  return format === "jamb_utme" ? "full JAMB mock" : kindLabel(type);
+}

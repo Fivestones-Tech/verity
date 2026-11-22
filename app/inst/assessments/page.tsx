@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState, PageHeader } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { kindLabel } from "@/lib/assessments/kinds";
+import { testLabel } from "@/lib/assessments/kinds";
 
 export const metadata: Metadata = { title: "Tests" };
 
@@ -14,11 +14,11 @@ export default async function AssessmentsPage() {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("assessments")
-    .select("id, name, assessment_type, status, duration_seconds, created_at, subject:subjects(name), questions:assessment_questions(count), attempts:assessment_attempts(count)")
+    .select("id, name, assessment_type, format, status, duration_seconds, created_at, subject:subjects(name), questions:assessment_questions(count), attempts:assessment_attempts(count)")
     .eq("institution_id", staff.institution.id)
     .order("created_at", { ascending: false })
     .limit(100);
-  type R = { id: string; name: string; assessment_type: string; status: string; duration_seconds: number; created_at: string; subject: { name: string } | null; questions: { count: number }[]; attempts: { count: number }[] };
+  type R = { id: string; name: string; assessment_type: string; format: string; status: string; duration_seconds: number; created_at: string; subject: { name: string } | null; questions: { count: number }[]; attempts: { count: number }[] };
   const rows = (data ?? []) as unknown as R[];
   return (
     <>
@@ -26,6 +26,7 @@ export default async function AssessmentsPage() {
         <div className="flex flex-wrap gap-2">
           <ButtonLink href="/inst/assessments/new" variant="gold">New topic test</ButtonLink>
           <ButtonLink href="/inst/assessments/new?kind=mock" variant="ghost">New mock</ButtonLink>
+          <ButtonLink href="/inst/assessments/new?kind=jamb_full" variant="ghost">New full JAMB mock</ButtonLink>
         </div>
       </PageHeader>
       {rows.length === 0 ? (
@@ -38,8 +39,8 @@ export default async function AssessmentsPage() {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td><Link href={`/inst/assessments/${r.id}`} className="font-medium hover:underline">{r.name}</Link></td>
-                  <td className="capitalize">{kindLabel(r.assessment_type)}</td>
-                  <td>{r.subject?.name}</td>
+                  <td className="capitalize">{testLabel(r.assessment_type, r.format)}</td>
+                  <td>{r.subject?.name ?? "English + 3 subjects"}</td>
                   <td className="n">{r.questions[0]?.count ?? 0}</td>
                   <td className="n">{Math.round(r.duration_seconds / 60)}</td>
                   <td className="n">{r.attempts[0]?.count ?? 0}</td>

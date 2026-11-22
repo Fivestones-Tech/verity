@@ -16,7 +16,7 @@ export default async function ResultPage({ params }: PageProps<"/app/results/[at
   const { attemptId } = await params;
   const r = await loadStudentResult(ctx, attemptId);
   if (!r) notFound();
-  const { attempt: a, topics, step } = r;
+  const { attempt: a, topics, step, jamb } = r;
 
   if (a.status === "in_progress") {
     return (
@@ -42,8 +42,25 @@ export default async function ResultPage({ params }: PageProps<"/app/results/[at
           <Stamp tone={a.status === "auto_submitted" ? "gold" : "pine"}>{a.status === "auto_submitted" ? "Time up" : "Submitted"}</Stamp>
         </div>
         <div className="doc-rule my-4" />
-        <p className="num text-5xl font-semibold">{Math.round(Number(a.percentage))}%</p>
-        <p className="num mt-1 text-lo">{Number(a.score)} / {Number(a.max_score)} marks</p>
+        {jamb ? (
+          <>
+            <p className="num text-5xl font-semibold">{jamb.total}<span className="text-2xl text-lo"> / {jamb.max}</span></p>
+            <p className="mt-1 text-lo">JAMB-style score: each subject is marked out of 100</p>
+            <table className="grid-table mt-3 text-sm">
+              <thead><tr><th>Subject</th><th className="text-right">Correct</th><th className="text-right">Score</th></tr></thead>
+              <tbody>
+                {jamb.subjects.map((s) => (
+                  <tr key={s.subject_id}><td>{s.name}</td><td className="n">{s.correct}/{s.total}</td><td className="n">{s.score}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : (
+          <>
+            <p className="num text-5xl font-semibold">{Math.round(Number(a.percentage))}%</p>
+            <p className="num mt-1 text-lo">{Number(a.score)} / {Number(a.max_score)} marks</p>
+          </>
+        )}
         <dl className="mt-4 grid grid-cols-4 gap-2 text-center">
           {[
             ["Correct", a.correct_count],

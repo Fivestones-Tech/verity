@@ -14,3 +14,15 @@ export const createAssessmentSchema = z.object({
   end_at: z.string().optional(),
   instructions: z.string().trim().max(2000).optional(),
 }).refine((v) => v.kind === "mock" || v.topic_ids.length > 0, { path: ["topic_ids"], message: "Choose at least one topic." });
+
+/** Full JAMB sitting: English + each student's 3 subjects. Sizes default to the real exam. */
+export const createSittingSchema = z.object({
+  name: z.string().trim().min(3).max(120),
+  english_questions: z.coerce.number().int().min(1).max(60),
+  other_questions: z.coerce.number().int().min(1).max(40),
+  duration_minutes: z.coerce.number().int().min(1).max(240),
+  assign_to: z.array(z.string()).min(1),
+  open_now: z.boolean().default(true),
+  end_at: z.string().optional(),
+  instructions: z.string().trim().max(2000).optional(),
+});

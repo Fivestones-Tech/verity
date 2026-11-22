@@ -13,7 +13,7 @@ export default async function ReviewMistakesPage({ params }: PageProps<"/app/res
   const m = await loadMistakes(ctx, attemptId);
   if (!m) notFound();
   const byTopic = new Map<string, typeof m.items>();
-  for (const it of m.items) byTopic.set(it.topic, [...(byTopic.get(it.topic) ?? []), it]);
+  for (const it of m.items) { const k = it.subject && m.items.some((x) => x.subject !== it.subject) ? `${it.subject} · ${it.topic}` : it.topic; byTopic.set(k, [...(byTopic.get(k) ?? []), it]); }
 
   return (
     <div className="mx-auto max-w-2xl">

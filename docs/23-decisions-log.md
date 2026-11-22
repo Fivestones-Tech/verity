@@ -25,6 +25,9 @@
 | D19 | Answers chosen before time ran out but synced up to 6 h late still count; the attempt is flagged "synced late" for teachers | Network drops must never cost answers (docs/17), but late sync is visible | Settled for pilot 2026-11-22 (assumption) |
 | D20 | Topics a centre adds during import are private to that centre and marked pending syllabus verification | docs/18 forbids invented platform topics; isolation rule | Settled 2026-11-22 |
 | D21 | Topic results roll subtopics up into their main topic | A 20-question test split across many subtopics gives no usable signal | Settled 2026-11-22 |
+| D22 | Mocks come in two forms: one-subject mocks and a full JAMB sitting (English + the student's 3 subjects, 60 + 3×40 questions, 2 hours) | Founder chose "both" | Settled 2026-11-22 |
+| D23 | Each student's 3 JAMB subjects are set by the centre (spreadsheet "subjects" column or the Students page); English is always included | Founder chose "add to student spreadsheet"; centres know combinations from registration | Settled 2026-11-22 |
+| D24 | A full sitting is scored JAMB-style: each subject out of 100, total out of 400. A subject without enough published questions is left out, and students taking it can't sit that mock | Matches how students read UTME scores; lets science students sit while arts questions are still being written | Settled 2026-11-22 (assumption, easy to change) |
 | D16 | v1 subjects (supersedes O3 default): English, Mathematics, Physics, Chemistry, Biology, Economics, Government, Commerce, Principles of Accounts / Financial Accounting, Literature in English, CRS. Covers Science, Commercial and Arts students; Nigerian market only for now | Pilot centre has mixed streams | Settled 2026-11-22 |
 | D15 | No equity fundraising for now; support via loan, grant/donation, early institutional commitment, or non-financial help | Founder decision | Settled |
 

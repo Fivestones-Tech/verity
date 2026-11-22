@@ -12,6 +12,8 @@ import {
   timeUsedSeconds,
 } from "@/lib/attempts/timing";
 import type { AnswerItem } from "@/lib/validation/attempts";
+import { sittingSubjectOrder } from "@/lib/scoring/jamb";
+import { JAMB_SITTING } from "@/lib/assessments/kinds";
 
 /**
  * Attempt lifecycle (docs/08, docs/17). Every function here runs server-side with
@@ -44,6 +46,7 @@ type AssessmentRow = {
   start_at: string | null;
   end_at: string | null;
   instructions: string | null;
+  format: "single_subject" | "jamb_utme";
   subject: { name: string } | null;
 };
 
@@ -62,6 +65,8 @@ export type AttemptPayload = {
   questions: {
     id: string;
     number: number;
+    /** the question's subject: lets a full JAMB sitting group questions by paper */
+    subject: string;
     text: string;
     options: { id: string; label: "A" | "B" | "C" | "D"; text: string }[];
   }[];
@@ -76,7 +81,7 @@ async function loadAssessment(assessmentId: string): Promise<AssessmentRow | nul
   const { data } = await db()
     .from("assessments")
     .select(
-      "id, institution_id, name, status, duration_seconds, attempt_limit, shuffle_questions, shuffle_options, start_at, end_at, instructions, subject:subjects(name)",
+      "id, institution_id, name, status, duration_seconds, attempt_limit, shuffle_questions, shuffle_options, start_at, end_at, instructions, format, subject:subjects(name)",
     )
     .eq("id", assessmentId)
     .maybeSingle();
@@ -148,10 +153,13 @@ export async function startAttempt(ctx: StudentContext, assessmentId: string): P
     .select("question_id, position")
     .eq("assessment_id", assessmentId)
     .order("position");
-  const questionIds = (aq ?? []).map((r) => r.question_id as string);
-  if (questionIds.length === 0) {
+  const poolIds = (aq ?? []).map((r) => r.question_id as string);
+  if (poolIds.length === 0) {
     throw new DomainError("assessment_empty", "This test has no questions yet. Please tell your teacher.", 409);
   }
+  // A full JAMB sitting holds questions for every subject; each student gets English + their 3.
+  const blocks = assessment.format === "jamb_utme" ? await sittingBlocks(ctx, poolIds) : [poolIds];
+  const questionIds = blocks.flat();
 
   const { data: opts } = await db()
     .from("question_options")
@@ -176,7 +184,8 @@ export async function startAttempt(ctx: StudentContext, assessmentId: string): P
       attempt_number: attemptNumber,
       started_at: startedAt.toISOString(),
       expires_at: expiresAt.toISOString(),
-      question_order: assessment.shuffle_questions ? shuffle(questionIds) : questionIds,
+      // shuffle within each paper so a sitting keeps English first, then each subject together
+      question_order: blocks.flatMap((b) => (assessment.shuffle_questions ? shuffle(b) : b)),
       option_order: optionOrder,
     })
     .select(ATTEMPT_COLUMNS)
@@ -200,6 +209,28 @@ export async function startAttempt(ctx: StudentContext, assessmentId: string): P
   return buildPayload(created as AttemptRow, assessment);
 }
 
+/** English first, then the student's 3 subjects, each as one block of the sitting's questions. */
+async function sittingBlocks(ctx: StudentContext, poolIds: string[]): Promise<string[][]> {
+  const [{ data: mine }, { data: qs }] = await Promise.all([
+    db().from("student_subjects").select("subject_id").eq("student_id", ctx.student.id),
+    db().from("questions").select("id, subject_id").in("id", poolIds),
+  ]);
+  const chosen = (mine ?? []).map((r) => r.subject_id as string);
+  if (chosen.length !== JAMB_SITTING.subjectsPerStudent) {
+    throw new DomainError("subjects_not_set", "Your JAMB subjects aren't set yet. Please ask your teacher to add them.", 409);
+  }
+  const { data: subs } = await db().from("subjects").select("id, name, code").or(`id.in.(${chosen.join(",")}),code.eq.${JAMB_SITTING.englishCode}`);
+  const english = (subs ?? []).find((s) => s.code === JAMB_SITTING.englishCode && poolIds.length > 0 && (qs ?? []).some((q) => q.subject_id === s.id));
+  const wanted = (subs ?? []).filter((s) => chosen.includes(s.id as string) || s.id === english?.id) as { id: string; name: string; code: string }[];
+  const order = sittingSubjectOrder(wanted);
+  const blocks = order.map((sid) => poolIds.filter((qid) => (qs ?? []).find((q) => q.id === qid)?.subject_id === sid));
+  const missing = order.filter((_, i) => blocks[i].length === 0);
+  if (!english || missing.length) {
+    throw new DomainError("subject_not_in_sitting", "This mock doesn't include one of your subjects. Please tell your teacher.", 409);
+  }
+  return blocks;
+}
+
 export async function getAttemptPayload(ctx: StudentContext, attemptId: string): Promise<AttemptPayload> {
   const attempt = await loadOwnAttempt(ctx, attemptId);
   const assessment = await loadAssessment(attempt.assessment_id);
@@ -210,12 +241,13 @@ export async function getAttemptPayload(ctx: StudentContext, attemptId: string):
 async function buildPayload(attempt: AttemptRow, assessment: AssessmentRow): Promise<AttemptPayload> {
   const ids = attempt.question_order;
   const [{ data: qs }, { data: opts }, { data: saved }] = await Promise.all([
-    db().from("questions").select("id, question_text").in("id", ids),
+    db().from("questions").select("id, question_text, subject:subjects(name)").in("id", ids),
     // NOTE: is_correct is deliberately not selected. The answer key never leaves the server.
     db().from("question_options").select("id, question_id, option_text").in("question_id", ids),
     db().from("responses").select("question_id, selected_option_id, seq").eq("attempt_id", attempt.id),
   ]);
   const qById = new Map((qs ?? []).map((q) => [q.id as string, q.question_text as string]));
+  const subjectById = new Map((qs ?? []).map((q) => [q.id as string, (q.subject as unknown as { name: string } | null)?.name ?? ""]));
   const oById = new Map((opts ?? []).map((o) => [o.id as string, o.option_text as string]));
   const labels = ["A", "B", "C", "D"] as const;
 
@@ -231,6 +263,7 @@ async function buildPayload(attempt: AttemptRow, assessment: AssessmentRow): Pro
     questions: ids.map((qid, i) => ({
       id: qid,
       number: i + 1,
+      subject: subjectById.get(qid) ?? "",
       text: qById.get(qid) ?? "",
       options: (attempt.option_order[qid] ?? []).map((oid, j) => ({
         id: oid,

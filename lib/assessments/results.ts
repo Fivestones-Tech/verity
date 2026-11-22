@@ -1,4 +1,5 @@
 import "server-only";
+import { jambBreakdowns } from "@/lib/assessments/jamb-results";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { closeStaleAttempts } from "@/lib/attempts/service";
 import { round1 } from "@/lib/scoring/score";
@@ -11,7 +12,7 @@ export async function loadAssessmentResults(assessmentId: string) {
   const supabase = await createSupabaseServerClient();
   const { data: a } = await supabase
     .from("assessments")
-    .select("id, name, assessment_type, status, duration_seconds, created_at, start_at, end_at, institution_id, subject:subjects(name), assignments:assessment_assignments(class_id, student_id)")
+    .select("id, name, assessment_type, format, question_count, status, duration_seconds, created_at, start_at, end_at, institution_id, subject:subjects(name), assignments:assessment_assignments(class_id, student_id)")
     .eq("id", assessmentId)
     .maybeSingle();
   if (!a) return null;
@@ -81,18 +82,24 @@ export async function loadAssessmentResults(assessmentId: string) {
     .sort((x, y) => y.wrong / y.seen - x.wrong / x.seen)
     .slice(0, 5);
 
+  // Full JAMB sitting: subject scores /100 each. The attempts above were read through RLS,
+  // so this viewer may see them.
+  const jamb = a.format === "jamb_utme" ? await jambBreakdowns(attemptIds) : null;
   const byStudent = new Map((attempts ?? []).map((x) => [x.student_id, x]));
   const className = new Map((classes ?? []).map((c) => [c.id, c.name]));
   const rows = (students ?? []).map((s) => ({
     student: { ...s, class_name: className.get(s.class_id ?? "") ?? null },
     attempt: byStudent.get(s.id) ?? null,
+    jamb: jamb?.get(byStudent.get(s.id)?.id ?? "") ?? null,
   }));
   const done = rows.filter((r) => r.attempt && r.attempt.status !== "in_progress");
   const avg = done.length ? round1(done.reduce((n, r) => n + Number(r.attempt!.percentage ?? 0), 0) / done.length) : null;
 
   return {
     assessment: a as typeof a & { subject: { name: string } | null },
-    questionCount: aqs.length,
+    // a sitting's pool holds every subject; each student answers question_count of them
+    questionCount: a.format === "jamb_utme" ? Number(a.question_count) : aqs.length,
+    isSitting: a.format === "jamb_utme",
     rows,
     stats: {
       assigned: rows.length,
