@@ -11,7 +11,7 @@ export async function loadAssessmentResults(assessmentId: string) {
   const supabase = await createSupabaseServerClient();
   const { data: a } = await supabase
     .from("assessments")
-    .select("id, name, status, duration_seconds, created_at, start_at, end_at, institution_id, subject:subjects(name), assignments:assessment_assignments(class_id, student_id)")
+    .select("id, name, assessment_type, status, duration_seconds, created_at, start_at, end_at, institution_id, subject:subjects(name), assignments:assessment_assignments(class_id, student_id)")
     .eq("id", assessmentId)
     .maybeSingle();
   if (!a) return null;

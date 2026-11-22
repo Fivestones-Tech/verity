@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { admin, makeCentre, signedIn, type Centre } from "../support/fixtures";
-import { createTopicTest } from "@/lib/assessments/service";
+import { createAssessment } from "@/lib/assessments/service";
 import { startAttempt } from "@/lib/attempts/service";
 
 /**
@@ -14,9 +14,9 @@ let testA: string;
 beforeAll(async () => {
   A = await makeCentre("ALPHA");
   B = await makeCentre("BETA");
-  testA = await createTopicTest(A.staffCtx(A.teacher, ["teacher"]), {
+  testA = await createAssessment(A.staffCtx(A.teacher, ["teacher"]), {
     name: "Alpha algebra", subject_id: A.subject.id, topic_ids: [A.topic.id], question_count: 4, duration_minutes: 10,
-    difficulties: [], assign_to: ["all"], open_now: true,
+    kind: "topic_test", difficulties: [], assign_to: ["all"], open_now: true,
   });
   await startAttempt(A.studentCtx(0), testA);
 });
@@ -84,9 +84,9 @@ describe("roles inside one centre", () => {
   });
 
   it("a student only sees tests assigned to them", async () => {
-    const classOnly = await createTopicTest(A.staffCtx(A.owner, ["owner"]), {
+    const classOnly = await createAssessment(A.staffCtx(A.owner, ["owner"]), {
       name: "Class B only", subject_id: A.subject.id, topic_ids: [A.topic.id], question_count: 2, duration_minutes: 5,
-      difficulties: [], assign_to: [A.classB.id], open_now: true,
+      kind: "topic_test", difficulties: [], assign_to: [A.classB.id], open_now: true,
     });
     const s1 = await signedIn(A.students[0].login.email, A.students[0].login.password);
     const { data } = await s1.from("assessments").select("id");

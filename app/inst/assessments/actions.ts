@@ -6,12 +6,13 @@ import { authorizeStaff, AuthError } from "@/lib/auth/session";
 import { AUTHOR_ROLES } from "@/lib/auth/roles";
 import { DomainError } from "@/lib/api";
 import { createAssessmentSchema } from "@/lib/validation/assessment";
-import { createTopicTest, setAssessmentStatus } from "@/lib/assessments/service";
+import { createAssessment, setAssessmentStatus } from "@/lib/assessments/service";
 
 export type BuilderState = { error: string | null };
 
 export async function createAssessmentAction(_p: BuilderState, form: FormData): Promise<BuilderState> {
   const parsed = createAssessmentSchema.safeParse({
+    kind: form.get("kind") === "mock" ? "mock" : "topic_test",
     name: form.get("name"),
     subject_id: form.get("subject_id"),
     topic_ids: form.getAll("topic_ids"),
@@ -36,7 +37,7 @@ export async function createAssessmentAction(_p: BuilderState, form: FormData): 
   }
   let id: string;
   try {
-    id = await createTopicTest(await authorizeStaff(AUTHOR_ROLES), parsed.data);
+    id = await createAssessment(await authorizeStaff(AUTHOR_ROLES), parsed.data);
   } catch (e) {
     if (e instanceof AuthError || e instanceof DomainError) return { error: e.message };
     console.error("[assessments] create failed", e);

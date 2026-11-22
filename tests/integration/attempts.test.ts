@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { admin, makeCentre, type Centre } from "../support/fixtures";
-import { createTopicTest } from "@/lib/assessments/service";
+import { createAssessment } from "@/lib/assessments/service";
 import { getAttemptPayload, saveAnswers, startAttempt, submitAttempt } from "@/lib/attempts/service";
 import { DomainError } from "@/lib/api";
 
@@ -8,9 +8,9 @@ let C: Centre;
 let testId: string;
 
 async function newTest(minutes = 10) {
-  return createTopicTest(C.staffCtx(C.teacher, ["teacher"]), {
+  return createAssessment(C.staffCtx(C.teacher, ["teacher"]), {
     name: `T ${Math.random()}`, subject_id: C.subject.id, topic_ids: [C.topic.id], question_count: 4, duration_minutes: minutes,
-    difficulties: [], assign_to: ["all"], open_now: true,
+    kind: "topic_test", difficulties: [], assign_to: ["all"], open_now: true,
   });
 }
 const nowIso = () => new Date().toISOString();

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { kindLabel } from "@/lib/assessments/kinds";
 import { notFound } from "next/navigation";
 import { requireStaffPage } from "@/lib/auth/session";
 import { hasAnyRole, AUTHOR_ROLES } from "@/lib/auth/roles";
@@ -22,7 +23,7 @@ export default async function AssessmentResultsPage({ params, searchParams }: Pa
 
   return (
     <>
-      <PageHeader eyebrow={`${a.subject?.name ?? ""} · topic test`} title={a.name}>
+      <PageHeader eyebrow={`${a.subject?.name ?? ""} · ${kindLabel(a.assessment_type)}`} title={a.name}>
         <a href={`/inst/assessments/${a.id}/export`} className="inline-flex min-h-11 items-center rounded-full border border-paper-line px-5 font-mono text-xs uppercase">Download CSV</a>
       </PageHeader>
       {sp.created === "1" && (
