@@ -1,6 +1,8 @@
 # 13 — Roadmap & Build Phases
 
-> **Current phase: Phase 0 — not yet started.** Update this line as work progresses. An agent should read this line first, every session, to know what's actually safe to build right now.
+> **Current phase: Pilot slice of Phases 0–3 built (2026-11-22). Next: Phase 4 (mastery + readiness, due for the centre by 2027-01-31) and weekly mocks (2027-01-25).** Update this line as work progresses. An agent should read this line first, every session, to know what's actually safe to build right now.
+>
+> The tutorial-centre pilot (centre starts 2027-01-11) needed a narrow slice across phases first: centre registration, staff + students, question import + review, timed topic tests, offline-safe answers, server scoring, results with topic breakdown. See `PROGRESS.md` for exactly what exists and what was deferred.
 
 ## Why phases matter
 
@@ -10,47 +12,47 @@ Later phases genuinely depend on earlier ones. Building the readiness engine (Ph
 
 ## Phase 0 — Setup
 
-- [ ] Repository initialized, this docs set committed at the root
-- [ ] Next.js + TypeScript + Tailwind scaffolded
-- [ ] Supabase project created, connected
-- [ ] Environment variables structure in place (`.env.example`)
-- [ ] CI basics (lint + typecheck on PR, at minimum)
+- [x] Repository initialized, this docs set committed at the root
+- [x] Next.js + TypeScript + Tailwind scaffolded
+- [ ] Supabase project created, connected (local stack works; hosted project still to create)
+- [x] Environment variables structure in place (`.env.example`)
+- [x] CI basics (lint + typecheck + unit tests on PR)
 
 ## Phase 1 — Foundation
 
-- [ ] Auth (Supabase Auth, email/password)
-- [ ] `profiles` table + trigger to create on signup
-- [ ] `institutions`, `institution_memberships` tables + RLS
-- [ ] `students`, `classes`, `class_memberships`, `class_teachers` + RLS
-- [ ] Role-based access control implemented and **tested** (two fake institutions, confirm isolation holds)
-- [ ] Basic institution registration flow, including exam-focus selection (`docs/09`)
-- [ ] Basic student registration flow
+- [x] Auth (Supabase Auth, email/password; students sign in with centre code + student number)
+- [x] `profiles` table + trigger to create on signup
+- [x] `institutions`, `institution_memberships` tables + RLS
+- [x] `students`, `classes`, `class_teachers` + RLS (class membership is `students.class_id` for now)
+- [x] Role-based access control implemented and **tested** (two fake institutions, confirm isolation holds)
+- [x] Basic institution registration flow, including exam-focus selection (`docs/09`)
+- [x] Student accounts created by the centre (CSV import + one-by-one); self sign-up deferred
 
 **Exit criteria:** a user can register, an institution can register, an admin can add a teacher and a student, and cross-institution access is confirmed blocked by an actual test, not just code review.
 
 ## Phase 2 — Content
 
-- [ ] `examinations`, `subjects`, `topics` seeded for JAMB + WAEC (v1 subject scope per `docs/03`)
-- [ ] `questions`, `question_options` + review workflow (draft → review → approved → published)
-- [ ] Question authoring UI (manual creation)
-- [ ] Bulk question import with validation + error reporting
-- [ ] Institution-owned vs. platform-owned content separation enforced
+- [x] `examinations`, `subjects` seeded (11 subjects, D16); topics come from the centre's import, marked pending verification
+- [x] `questions`, `question_options` + review workflow (pilot: approve = publish) (draft → review → approved → published)
+- [x] Question authoring UI (manual creation)
+- [x] Bulk question import with validation + error reporting
+- [x] Institution-owned vs. platform-owned content separation enforced
 
 **Exit criteria:** an admin can create, review, and publish a question; an institution can upload their own question bank without seeing or affecting anyone else's.
 
 ## Phase 3 — Assessment Engine
 
-- [ ] Assessment builder (manual + filtered selection)
-- [ ] Assessment assignment (individual student / class)
-- [ ] CBT delivery UI: timer, navigation, answer persistence through network drop
-- [ ] Server-side scoring pipeline (`docs/08`)
-- [ ] Immutable attempt records, idempotent submission
+- [x] Assessment builder (filtered selection; manual pick deferred)
+- [x] Assessment assignment (whole centre / class)
+- [x] CBT delivery UI: timer, navigation, answer persistence through network drop
+- [x] Server-side scoring pipeline (`docs/08`)
+- [x] Immutable attempt records, idempotent submission
 
 **Exit criteria:** a student can take a full timed assessment, including surviving a simulated connection drop mid-assessment, and receive a server-calculated result.
 
 ## Phase 4 — Intelligence
 
-- [ ] `topic_performance` calculation
+- [x] `topic_performance` calculation
 - [ ] `student_mastery` calculation (with confidence/evidence rules — `docs/07`)
 - [ ] `readiness_scores` calculation (canonical v1 formula — `docs/07`)
 - [ ] Rule-based recommendation engine

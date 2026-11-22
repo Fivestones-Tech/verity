@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+/* Design tokens: docs/10-design-system.md. Do not add colours, fonts or radii here. */
+:root {
+  --ink: #0b0f0d;
+  --ink-soft: #121814;
+  --ink-line: #26302a;
+  --paper: #eceae0;
+  --paper-soft: #e1dece;
+  --paper-line: #cfcbb6;
+  --pine: #1f4a3a;
+  --pine-deep: #143229;
+  --moss: #5c9c7c;
+  --gold: #b8862e;
+  --gold-soft: #d9b863;
+  --brick: #9c4132;
+  --text-ink-hi: #f3f1e7;
+  --text-ink-lo: #9ba398;
+  --text-paper-hi: #14170f;
+  --text-paper-lo: #56594b;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-line: var(--ink-line);
+  --color-paper: var(--paper);
+  --color-paper-soft: var(--paper-soft);
+  --color-paper-line: var(--paper-line);
+  --color-pine: var(--pine);
+  --color-pine-deep: var(--pine-deep);
+  --color-moss: var(--moss);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-brick: var(--brick);
+  --color-ink-hi: var(--text-ink-hi);
+  --color-ink-lo: var(--text-ink-lo);
+  --color-hi: var(--text-paper-hi);
+  --color-lo: var(--text-paper-lo);
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-sans: var(--font-archivo), -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+  --radius-doc: 3px;
+}
+
+html {
+  background: var(--paper);
+  color: var(--text-paper-hi);
+}
+
+body {
+  background: var(--paper);
+  color: var(--text-paper-hi);
+  font-family: var(--font-sans);
+}
+
+/* Every number, score, timestamp and reference uses mono tabular figures. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-paper-lo);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Hairline grid for tables (docs/10 data tables) */
+.grid-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.grid-table th,
+.grid-table td {
+  border: 1px solid var(--paper-line);
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+.grid-table th {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-paper-lo);
+  font-weight: 500;
+  background: var(--paper);
+}
+.grid-table td {
+  background: var(--paper-soft);
+}
+.grid-table td.n {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Dashed tear-off rule: readiness/report components only */
+.doc-rule {
+  border-top: 1px dashed var(--paper-line);
+}
+
+.skeleton {
+  background: var(--paper-soft);
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.55;
+    }
+  }
+}
