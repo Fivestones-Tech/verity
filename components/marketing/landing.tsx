@@ -11,6 +11,11 @@ import { Wordmark } from "@/components/ui/wordmark";
  * guarantees (docs/01), no online checkout yet, so the action is centre registration.
  */
 
+/** Public contact for centres (given by the founder for the landing page). */
+const WHATSAPP_DISPLAY = "0701 534 7742";
+const WHATSAPP_URL = "https://wa.me/2347015347742";
+const EMAIL = "matthewfolaweogunnaike@gmail.com";
+
 const darkGhost =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-ink-line px-5 font-mono text-[0.78rem] font-medium uppercase tracking-[0.06em] text-ink-hi transition-colors hover:bg-ink-soft";
 
@@ -297,15 +302,33 @@ function Honesty() {
 function PilotCta() {
   return (
     <section className="bg-pine text-ink-hi">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-14 md:flex-row md:items-center md:justify-between">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-6 pt-14 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="font-mono text-[0.72rem] uppercase tracking-[0.08em] text-gold-soft">January 2027 · Tutorial centre pilot</p>
           <h2 className="mt-2 max-w-xl font-serif text-3xl">Get your JAMB class ready for March.</h2>
           <p className="mt-2 max-w-xl text-ink-hi/80">Register your centre, add your teachers and students, and run your first test the same day.</p>
         </div>
-        <Link href="/register/institution" className={`${buttonClass("gold")} shrink-0`}>
-          Register your centre
-        </Link>
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col lg:flex-row">
+          <Link href="/register/institution" className={buttonClass("gold")}>
+            Register your centre
+          </Link>
+          <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-full border border-moss px-5 font-mono text-[0.78rem] font-medium uppercase tracking-[0.06em] text-ink-hi transition-colors hover:bg-pine-deep">
+            Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+      <div className="mx-auto max-w-6xl px-4 pb-12">
+        <p className="text-sm text-ink-hi/80">
+          Prefer to talk first? WhatsApp{" "}
+          <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="num underline">
+            {WHATSAPP_DISPLAY}
+          </a>{" "}
+          or email{" "}
+          <a href={`mailto:${EMAIL}`} className="break-all underline">
+            {EMAIL}
+          </a>
+          .
+        </p>
       </div>
     </section>
   );
@@ -326,7 +349,10 @@ function Faq() {
       "The test keeps going. Answers are saved on the phone and sent once the connection is back, even if the page is reloaded.",
     ],
     ["Does it work on a phone?", "Yes. Verity is designed for phones first and works in the browser, with nothing to install."],
-    ["What does it cost?", "Centres in the January pilot will hear about pricing directly before anything is charged. There is no payment on this site."],
+    [
+      "What does it cost?",
+      `Centres in the January pilot will hear about pricing directly before anything is charged. There is no payment on this site. To ask about it, WhatsApp ${WHATSAPP_DISPLAY} or email ${EMAIL}.`,
+    ],
   ];
   return (
     <section className="mx-auto max-w-3xl px-4 py-16 md:py-20">
@@ -354,7 +380,13 @@ function SiteFooter() {
     <footer className="bg-ink text-ink-lo">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
         <Wordmark onDark />
-        <div className="flex gap-5">
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="hover:text-ink-hi">
+            WhatsApp
+          </a>
+          <a href={`mailto:${EMAIL}`} className="hover:text-ink-hi">
+            Email us
+          </a>
           <Link href="/login" className="hover:text-ink-hi">
             Sign in
           </Link>
