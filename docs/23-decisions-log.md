@@ -28,6 +28,13 @@
 | D22 | Mocks come in two forms: one-subject mocks and a full JAMB sitting (English + the student's 3 subjects, 60 + 3×40 questions, 2 hours) | Founder chose "both" | Settled 2026-11-22 |
 | D23 | Each student's 3 JAMB subjects are set by the centre (spreadsheet "subjects" column or the Students page); English is always included | Founder chose "add to student spreadsheet"; centres know combinations from registration | Settled 2026-11-22 |
 | D24 | A full sitting is scored JAMB-style: each subject out of 100, total out of 400. A subject without enough published questions is left out, and students taking it can't sit that mock | Matches how students read UTME scores; lets science students sit while arts questions are still being written | Settled 2026-11-22 (assumption, easy to change) |
+| D25 | Early Access pass: a one-time payment gives a student a full year of JAMB + WAEC practice. ₦500 through a tutorial centre, ₦1,000 on their own. Sold until 31 March 2027 | Get students paying early, test real payments, let them enjoy the full product before full prices | Settled 2026-11-23 |
+| D26 | Students who pay on their own join Verity's own "online centre" (an ordinary institution, `ONLINE_CENTRE_CODE`), and Verity's team posts its tests | Reuses the centre model and RLS; no separate solo product needed yet | Settled 2026-11-23 |
+| D27 | Free trial without a pass = one test in one subject (first attempt only, not a full JAMB sitting) | Founder: "just one single exam a subject only" | Settled 2026-11-23 (supersedes O6 for the early-access period) |
+| D28 | During early access, centres collect ₦500 cash per student and pay Verity offline; a Verity admin turns passes on. Later, centres pay for all students in the app | Founder chose cash first, then in-app centre payment | Settled 2026-11-23 |
+| D29 | Paystack for online payments (hosted checkout, secret key only on the server) | Common in Nigeria, cards + transfer + USSD, good webhooks. Recommended; founder to confirm by creating the account | Proposed 2026-11-23 (answers O4 once the account exists) |
+| D30 | Students can sign up themselves, with or without a centre code. Anyone paying online pays ₦1,000; ₦500 only when the centre collects and pays. A student who types a centre code joins only after the centre accepts them | Founder: "instead of 500 they will pay 1000 since they are not using the centre offer". Acceptance step keeps strangers out of a centre's tests (rule 2) | Settled 2026-11-23 (acceptance step is an agent assumption) |
+| D31 | Verity admin area (`/admin`) for platform admins only (Matthew): centres, students, passes, cash/free passes, money in. Online-centre tests are posted by signing in as that centre's owner | Founder asked for an admin login | Settled 2026-11-23 |
 | D16 | v1 subjects (supersedes O3 default): English, Mathematics, Physics, Chemistry, Biology, Economics, Government, Commerce, Principles of Accounts / Financial Accounting, Literature in English, CRS. Covers Science, Commercial and Arts students; Nigerian market only for now | Pilot centre has mixed streams | Settled 2026-11-22 |
 | D15 | No equity fundraising for now; support via loan, grant/donation, early institutional commitment, or non-financial help | Founder decision | Settled |
 
@@ -38,7 +45,7 @@
 | O1 | Should institutional pricing vary by exam focus (like the student ladder)? | Flat per student regardless of focus | `docs/09`, `plans` table |
 | O2 | Are the v1 readiness weights acceptable? | 30/30/15/10/15 (recent/mastery/consistency/coverage/mock) | `docs/07` |
 | O3 | Which subject combinations launch first? (subjects answered by D16) | See D16 | `docs/18`, Phase 2 seed |
-| O4 | Payment provider: Paystack or Flutterwave? | Undecided | Phase 6 |
+| O4 | Payment provider: Paystack or Flutterwave? | Paystack proposed (D29), waiting for the founder's account | Early Access (D25) |
 | O5 | Email provider for transactional mail | Undecided (Resend/Postmark/Brevo) | `docs/19` |
 | O6 | Free-tier limits (daily questions, which sample assessment) | Undecided | `docs/09` entitlements |
 | O7 | Exact institutional trial length and limits | Undecided | `docs/09` |

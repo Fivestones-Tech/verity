@@ -41,7 +41,7 @@ async function user(email: string, name: string) {
 export type Centre = Awaited<ReturnType<typeof makeCentre>>;
 
 /** A centre with an owner, a teacher (assigned to class A), a second reviewer, two students and published questions. */
-export async function makeCentre(label: string) {
+export async function makeCentre(label: string, opts: { passes?: boolean } = {}) {
   const tag = randomUUID().slice(0, 6).toUpperCase();
   const code = `${label}${tag}`.replace(/[^A-Z0-9]/g, "").slice(0, 12);
   const { data: inst } = await admin.from("institutions").insert({ name: `${label} Centre`, code, type: "tutorial_centre", exam_focus: "jamb_only" }).select().single();
@@ -61,6 +61,12 @@ export async function makeCentre(label: string) {
   const s2u = await user(`s2.${tag.toLowerCase()}@students.example.test`, `${label} Student Two`);
   const { data: s1 } = await admin.from("students").insert({ profile_id: s1u.id, institution_id: inst!.id, full_name: `${label} Student One`, student_number: "S1", class_id: classA!.id }).select().single();
   const { data: s2 } = await admin.from("students").insert({ profile_id: s2u.id, institution_id: inst!.id, full_name: `${label} Student Two`, student_number: "S2", class_id: classB!.id }).select().single();
+
+  // Most suites test tests, not billing: give both students an Early Access pass unless asked not to.
+  if (opts.passes !== false) {
+    const ends = new Date(Date.now() + 365 * 86400_000).toISOString();
+    await admin.from("student_passes").insert([s1!, s2!].map((s) => ({ student_id: s.id, institution_id: inst!.id, plan_key: "early_access_centre", source: "free_pilot", amount_kobo: 0, ends_at: ends })));
+  }
 
   const { data: subject } = await admin.from("subjects").select("id, examination_id, exam:examinations!inner(code)").eq("code", "MTH").eq("exam.code", "JAMB").single();
   const { data: topic } = await admin.from("topics").insert({ subject_id: subject!.id, name: `Algebra ${tag}`, institution_id: inst!.id }).select().single();

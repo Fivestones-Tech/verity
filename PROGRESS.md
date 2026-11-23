@@ -5,7 +5,7 @@
 ## Current state
 
 - **Current phase:** Pilot slice built (Phases 0–3 + topic_performance). See `docs/13`.
-- **Last completed task:** Full JAMB mock sitting (2026-11-22)
+- **Last completed task:** Early Access pass and payments (2026-11-23, PR open)
 - **Next task:** Before Jan 11: create the hosted Supabase project + Vercel deploy, apply migrations, register the pilot centre. Then Phase 4 readiness + teacher views (Jan 31).
 - **Blocked on / waiting for founder:** see "Open questions" below
 
@@ -13,7 +13,7 @@
 
 (Copy from `docs/23-decisions-log.md` section "Open" when a task needs the answer. Remove when answered.)
 
-- [ ] O4 — Payment provider (needed before Phase 6)
+- [ ] O4 — Payment provider: Paystack proposed (D29); founder to create the account and add PAYSTACK_SECRET_KEY
 - [x] O3 — subjects answered (D16, 11 subjects); combinations still open
 - [ ] O1 — Institutional pricing by exam focus (needed before Phase 6)
 
@@ -29,6 +29,12 @@ Format:
 - Decisions/assumptions: anything the founder should know
 - Next: the very next task
 ```
+
+### 2026-11-23 — Early Access pass and payments
+- Did: migration `20261123000100_early_access_pass.sql` (`payments`, `student_passes`, RLS, `activate_online_pass()` service-role only). Free-trial rule in `lib/entitlements/pass.ts` enforced in `startAttempt` (402 `pass_required` / `trial_single_subject_only`). Paystack hosted checkout (`lib/billing/*`, `/app/pass`, `/app/pass/return`, webhook `/api/v1/billing/paystack/webhook`). Student self sign-up `/register/student`: no code → online centre (`ONLINE_CENTRE_CODE`); centre code → join request the centre accepts on its Students page. Online is always ₦1,000. Platform admin area `/admin`: centres, students, passes, cash/free passes, money in, latest payments. Pass column on the Students page. Login tabs now "Centre student" / "Email".
+- Verified: 78 unit, 61 integration (new `billing.test.ts`: trial, race, centre cash, payment race, amount mismatch, ₦1,000 server price, join requests, RLS), e2e incl. paywall, admin cash passes, solo sign-up, join request; lint, typecheck, build.
+- Decisions/assumptions: D25–D31. Test fixtures give students a free pilot pass unless `{ passes: false }`.
+- Next: founder creates Paystack account and the online centre; apply the migration to staging; give the pilot centre's students passes.
 
 ### 2026-11-22 — Full JAMB mock sitting
 - Did: migration `20261122000300_jamb_full_sitting.sql` (`student_subjects` with RLS, `assessments.format` = single_subject | jamb_utme, subject_id nullable for a sitting). Student subjects from the CSV "subjects" column or the Students page. Builder `/inst/assessments/new?kind=jamb_full` (defaults 60 English + 40 per subject, 120 min). Each attempt gets English then the student's 3 subjects (`sittingBlocks`). Take screen subject tabs and grouped grid. Results JAMB-style (`lib/scoring/jamb.ts`, `lib/assessments/jamb-results.ts`): each subject /100, total /400, on the result slip, teacher table and CSV.

@@ -22,7 +22,7 @@ export function LoginForm() {
             onClick={() => setMode(m)}
             className={`min-h-10 rounded-full font-mono text-xs uppercase tracking-[0.06em] ${mode === m ? "bg-pine text-ink-hi" : "text-lo"}`}
           >
-            {m === "student" ? "Student" : "Teacher / admin"}
+            {m === "student" ? "Centre student" : "Email"}
           </button>
         ))}
       </div>
@@ -43,9 +43,14 @@ export function LoginForm() {
           {pending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-      {mode === "student" && (
+      {mode === "student" ? (
         <p className="mt-4 text-sm text-lo">Your centre gives you your student number and password. Lost them? Ask your teacher to reset your password.</p>
+      ) : (
+        <p className="mt-4 text-sm text-lo">For teachers, centre admins, and students who created their own account.</p>
       )}
+      <p className="mt-2 text-sm text-lo">
+        No account yet? <a className="underline" href="/register/student">Create a student account</a>
+      </p>
     </div>
   );
 }

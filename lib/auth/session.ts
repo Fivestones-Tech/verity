@@ -92,6 +92,37 @@ export async function authorizeStudent(): Promise<StudentContext> {
   return ctx;
 }
 
+export type PlatformAdminContext = { userId: string };
+
+async function isPlatformAdmin(userId: string): Promise<boolean> {
+  const { data } = await createSupabaseAdminClient().from("platform_admins").select("user_id").eq("user_id", userId).maybeSingle();
+  return Boolean(data);
+}
+
+/** Verity's own team (platform_admins), e.g. to record a centre's cash payment. */
+export async function authorizePlatformAdmin(): Promise<PlatformAdminContext> {
+  const userId = await getUserId();
+  if (!userId) throw new AuthError("unauthenticated", "Please sign in again.");
+  if (!(await isPlatformAdmin(userId))) throw new AuthError("forbidden", "You don't have access to this.");
+  return { userId };
+}
+
+export async function requirePlatformAdminPage(): Promise<PlatformAdminContext> {
+  try {
+    return await authorizePlatformAdmin();
+  } catch (e) {
+    if (e instanceof AuthError && e.code === "unauthenticated") redirect("/login");
+    if (e instanceof AuthError) redirect("/forbidden");
+    throw e;
+  }
+}
+
+/** For the nav: show the Verity admin link to platform admins who are also centre staff. */
+export async function currentUserIsPlatformAdmin(): Promise<boolean> {
+  const userId = await getUserId();
+  return userId ? isPlatformAdmin(userId) : false;
+}
+
 /** For pages: redirects instead of throwing. */
 export async function requireStaffPage(allowed?: StaffRole[]): Promise<StaffContext> {
   try {
@@ -114,8 +145,9 @@ export async function requireStudentPage(): Promise<StudentContext> {
 }
 
 /** Where a signed-in user should land. */
-export async function homeFor(userId: string): Promise<"/inst" | "/app" | "/forbidden"> {
+export async function homeFor(userId: string): Promise<"/inst" | "/app" | "/admin" | "/forbidden"> {
   if (await loadStaff(userId)) return "/inst";
   if (await loadStudent(userId)) return "/app";
+  if (await isPlatformAdmin(userId)) return "/admin";
   return "/forbidden";
 }

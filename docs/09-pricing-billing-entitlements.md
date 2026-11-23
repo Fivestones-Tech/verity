@@ -2,6 +2,24 @@
 
 > ⚠️ **Open decision, flagged for the founder, not the agent:** institutional pricing below is currently **flat per student regardless of exam-board scope** (WAEC-only / JAMB-only / Both all cost the same per student). Individual student pricing, by contrast, DOES vary by exam scope. This asymmetry was an explicit default chosen during planning, not a confirmed final decision — if you want institutional pricing to also vary by scope (mirroring the individual ladder), update the `plans` table accordingly before launch. Don't let an agent quietly "fix" this asymmetry either direction without asking.
 
+## Early Access pass (founder decision 2026-11-23, live until 31 March 2027)
+
+Before the full prices below go live, Verity sells one simple product to students:
+
+| Who | Price | How they pay | How it turns on |
+|---|---|---|---|
+| Student at a tutorial centre | ₦500 one-time | Cash to their centre; the centre pays Verity | A Verity platform admin records it at `/admin` (source `centre_cash`) |
+| Anyone paying online (with or without a centre) | ₦1,000 one-time | Online, Paystack hosted checkout | Paystack webhook (signature checked) or the return page, both re-verified with Paystack's verify API, amount checked (source `online_payment`) |
+
+- A pass = **a full year of JAMB + WAEC practice** from the day it turns on (`student_passes`, 365 days).
+- The price can be bought until **31 March 2027, end of day Lagos time**; passes already bought keep their full year.
+- **Free trial without a pass: one test in one subject** (the student's first attempt, never a full JAMB sitting). Rule in `lib/entitlements/pass.ts`, enforced by the start route, not just the button.
+- Students can create their own account at `/register/student`. With no centre code they join Verity's own **online centre** (an ordinary institution named by `ONLINE_CENTRE_CODE`; Verity's team posts its tests). With a centre code they wait until that centre's owner/admin accepts them (`students.requested_institution_id`; until then `institution_id` is null, so RLS shows them nothing of the centre). Declined students move to the online centre.
+- Only Verity's platform admins (`platform_admins`, Matthew's account only) can open `/admin`: every centre, its students and passes, cash and free passes, money in, latest online payments.
+- Platform admins can also give **free pilot passes** (source `free_pilot`, ₦0).
+- Prices, end date and length live only in `lib/billing/plans.ts`.
+- Later (after early access): centres pay for all their students in the app (founder: "move to B"). Not built yet.
+
 ## Individual student pricing (confirmed)
 
 A pay-as-you-need ladder — students are never forced into a bigger commitment than they want.

@@ -84,7 +84,7 @@ try {
   const t = await teacherCtx.newPage();
   await t.goto(`${BASE}/login`);
   await t.waitForLoadState("networkidle"); // wait for the form to hydrate
-  await t.getByRole("tab", { name: "Teacher / admin" }).click();
+  await t.getByRole("tab", { name: "Email" }).click();
   await t.fill("#email", teacherEmail);
   await t.fill("#password", teacherPassword);
   await t.getByRole("button", { name: "Sign in" }).click();
@@ -219,6 +219,46 @@ try {
   check(teacherView.includes("Adaeze Okafor") && teacherView.includes("Submitted"), "teacher sees the submitted result");
   await shot(t, "13-teacher-results");
 
+  // ---------------- Early Access: free test used, centre pays cash, Verity turns passes on ----------------
+  await s.goto(`${BASE}/app`);
+  await s.waitForLoadState("networkidle");
+  check(/free test used/i.test(await s.locator("main").innerText()), "after the first test the student sees their free test is used");
+  await s.goto(`${BASE}/app/pass`);
+  const passText = await s.locator("main").innerText();
+  check(passText.includes("₦500") && passText.includes("Brightstar Tutorial Centre") && passText.includes("31 March 2027"), "centre student is told to pay ₦500 through their centre (offer ends 31 March 2027)");
+  await shot(s, "14a-pass-centre-student");
+  // a second test is locked until the pass is on
+  await t.goto(`${BASE}/inst/assessments/new`);
+  await t.getByLabel(/^Algebra/).check();
+  await t.fill("#question_count", "4");
+  await t.fill("#duration_minutes", "10");
+  await t.fill("#name", "Maths topic test 2");
+  await t.getByRole("button", { name: "Create and open now" }).click();
+  await t.waitForURL(/\/inst\/assessments\/[0-9a-f-]+\?created=1/);
+  const test2Id = t.url().split("?")[0].split("/").pop();
+  await s.goto(`${BASE}/app/assessments/${test2Id}`);
+  check(await s.getByRole("link", { name: "Get the pass" }).isVisible(), "a second test asks for the pass instead of Begin");
+  const startRes = await s.evaluate(async (id) => (await fetch(`/api/v1/assessments/${id}/start`, { method: "POST" })).status, test2Id);
+  check(startRes === 402, "the server refuses to start it too (402), not just the button");
+  await shot(s, "14b-second-test-needs-pass");
+
+  // Verity's team (a platform admin) records the centre's cash payment
+  const { data: ownerUser } = await db.from("profiles").select("id").eq("email", owner.email).single();
+  await db.from("platform_admins").insert({ user_id: ownerUser.id });
+  await o.goto(`${BASE}/admin`);
+  await o.getByRole("row").filter({ hasText: centreCode }).getByRole("link", { name: "Brightstar Tutorial Centre" }).click();
+  await o.waitForLoadState("networkidle");
+  await shot(o, "14c-admin-centre-passes");
+  await o.getByRole("button", { name: /Turn on for all 3 without a pass/ }).click();
+  await o.getByText("Turned on 3 passes.").waitFor();
+  check(true, "admin turned on 3 passes after the centre paid cash");
+  await t.goto(`${BASE}/inst/students`);
+  const adaRow = await t.getByRole("row", { name: /Adaeze Okafor/ }).innerText();
+  check(adaRow.includes("Until"), `teacher sees the student's pass on the Students page (${adaRow.replace(/\s+/g, " ")})`);
+  await s.goto(`${BASE}/app`);
+  check((await s.locator("main").innerText()).includes("Early Access pass active"), "student sees the pass is active");
+  await db.from("assessments").update({ status: "archived" }).eq("id", test2Id); // keep the rest of the flow on the original tests
+
   // ---------------- teacher sets a weekly mock (whole syllabus) ----------------
   await t.goto(`${BASE}/inst/assessments/new?kind=mock`);
   await t.waitForLoadState("networkidle");
@@ -288,6 +328,52 @@ try {
   await t.goto(sittingUrl);
   check(/jamb score \/400/i.test(await t.locator("main").innerText()), "teacher sees JAMB scores");
   await shot(t, "19-full-jamb-teacher");
+
+  // ---------------- a student joins on their own (Verity online centre) ----------------
+  if (process.env.ONLINE_CENTRE_CODE) {
+    const solo = await browser.newContext({ ...devices["Pixel 7"] });
+    const v = await solo.newPage();
+    await v.goto(`${BASE}/register/student`);
+    await v.waitForLoadState("networkidle");
+    check((await v.locator("main").innerText()).includes("₦1,000"), "solo sign-up page shows the ₦1,000 Early Access price");
+    await v.fill("#full_name", "Tobi Bankole");
+    await v.fill("#email", `tobi.${tag.toLowerCase()}@example.test`);
+    await v.fill("#password", "Solo-pass-123");
+    await v.getByRole("button", { name: "Create my account" }).click();
+    await v.waitForURL(`${BASE}/app`);
+    check(/free trial/i.test(await v.locator("main").innerText()), "solo student lands on their home with a free trial");
+    await v.goto(`${BASE}/app/pass`);
+    const soloPass = await v.locator("main").innerText();
+    check(soloPass.includes("₦1,000") && !soloPass.includes("Pay ₦500"), "solo student sees the ₦1,000 price");
+    await shot(v, "20-pass-solo-student");
+    await solo.close();
+
+    // a student who attends Brightstar signs up themselves with the centre code
+    const joiner = await browser.newContext({ ...devices["Pixel 7"] });
+    const j = await joiner.newPage();
+    await j.goto(`${BASE}/register/student`);
+    await j.waitForLoadState("networkidle");
+    await j.fill("#full_name", "Kemi Oladipo");
+    await j.fill("#email", `kemi.${tag.toLowerCase()}@example.test`);
+    await j.fill("#password", "Kemi-pass-123");
+    await j.fill("#centre_code", centreCode.toLowerCase());
+    await j.getByRole("button", { name: "Create my account" }).click();
+    await j.waitForURL(`${BASE}/app`);
+    const waiting = await j.locator("main").innerText();
+    check(waiting.includes("Waiting for Brightstar Tutorial Centre to accept you") && !waiting.includes("Maths topic test 1"), "self-registered student waits for the centre and sees none of its tests");
+    await shot(j, "21-join-request-waiting");
+    await o.goto(`${BASE}/inst/students`);
+    await o.waitForLoadState("networkidle");
+    await shot(o, "22-centre-join-requests");
+    await o.locator("li").filter({ hasText: "Kemi Oladipo" }).getByRole("button", { name: "Accept" }).click();
+    await o.getByRole("row", { name: /Kemi Oladipo/ }).waitFor();
+    check(true, "centre owner accepted the join request");
+    await j.goto(`${BASE}/app/pass`);
+    const kemiPass = await j.locator("main").innerText();
+    check(kemiPass.includes("₦500") && kemiPass.includes("₦1,000"), "centre student who signed up sees both: ₦500 through the centre or ₦1,000 online");
+    await shot(j, "23-pass-centre-student-two-options");
+    await joiner.close();
+  }
 
   await phone.close(); // flushes the video
   await ownerCtx.close();
