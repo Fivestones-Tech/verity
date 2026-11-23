@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Stamp } from "@/components/ui/stamp";
 import { Wordmark } from "@/components/ui/wordmark";
+import { paystackSecret } from "@/lib/billing/paystack";
+import { CENTRE_CASH_PLAN, EARLY_ACCESS, ONLINE_PLAN, isOfferOpen, naira } from "@/lib/billing/plans";
 
 /**
  * Public landing page (route "/", signed-out visitors).
@@ -16,10 +18,15 @@ const WHATSAPP_DISPLAY = "0701 534 7742";
 const WHATSAPP_URL = "https://wa.me/2347015347742";
 const EMAIL = "matthewfolaweogunnaike@gmail.com";
 
+const CENTRE_PRICE = naira(EARLY_ACCESS.plans[CENTRE_CASH_PLAN].amountKobo);
+const ONLINE_PRICE = naira(EARLY_ACCESS.plans[ONLINE_PLAN].amountKobo);
+const OFFER_ENDS = "31 March 2027";
+
 const darkGhost =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-ink-line px-5 font-mono text-[0.78rem] font-medium uppercase tracking-[0.06em] text-ink-hi transition-colors hover:bg-ink-soft";
 
 export function Landing() {
+  const offerOpen = isOfferOpen();
   return (
     <div className="flex flex-1 flex-col">
       <SiteHeader />
@@ -28,6 +35,7 @@ export function Landing() {
         <Audiences />
         <Loop />
         <Features />
+        {offerOpen && <Pricing onlinePayOpen={Boolean(paystackSecret())} />}
         <Honesty />
         <PilotCta />
         <Faq />
@@ -180,12 +188,15 @@ function Audiences() {
             <Point>Review your mistakes with a worked solution for each question.</Point>
             <Point>Parents can go through the result slip with their child and see real progress, not just one score.</Point>
           </ul>
-          <p className="mt-7 text-sm text-lo">
-            Students join through their tutorial centre. Already have a sign-in slip?{" "}
+          <Link href="/register/student" className={`${buttonClass("primary")} mt-7`}>
+            Create a student account
+          </Link>
+          <p className="mt-4 text-sm text-lo">
+            Your first test in one subject is free. Already have a sign-in slip from your centre?{" "}
             <Link href="/login" className="text-pine underline">
               Sign in here
             </Link>
-            . Want Verity at your centre? Share this page with them.
+            .
           </p>
         </div>
       </div>
@@ -255,6 +266,38 @@ function Features() {
           </div>
         ))}
       </dl>
+    </section>
+  );
+}
+
+function Pricing({ onlinePayOpen }: { onlinePayOpen: boolean }) {
+  const tiers: [string, string, string, string][] = [
+    ["Free", "First test", "One timed test in one subject, with a full result slip and worked solutions.", "No card, no payment"],
+    [CENTRE_PRICE, "Through your centre", "Pay your centre and they turn on your pass. Every test, JAMB and WAEC, for a full year.", "Per student · one-time"],
+    [ONLINE_PRICE, "Paid online", "Pay yourself, with or without a centre. The same full year of JAMB and WAEC practice.", onlinePayOpen ? "Per student · one-time" : "Online payment opens soon"],
+  ];
+  return (
+    <section id="pricing" className="border-y border-paper-line bg-paper-soft">
+      <div className="mx-auto max-w-6xl px-4 py-16 md:py-20">
+        <p className="eyebrow">Early Access pricing</p>
+        <h2 className="mt-2 max-w-2xl font-serif text-3xl md:text-4xl">Try one test free. Then one small payment for the year.</h2>
+        <div className="mt-10 grid gap-px border border-paper-line bg-paper-line md:grid-cols-3">
+          {tiers.map(([price, title, body, note]) => (
+            <div key={title} className="flex flex-col bg-paper p-6">
+              <p className="eyebrow">{title}</p>
+              <p className="num mt-3 text-4xl font-semibold text-pine">{price}</p>
+              <p className="mt-3 text-sm">{body}</p>
+              <p className="num mt-auto pt-5 text-xs text-lo">{note}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Link href="/register/student" className={buttonClass("primary")}>
+            Create a student account
+          </Link>
+          <p className="num text-xs text-lo">Early Access price available until {OFFER_ENDS}.</p>
+        </div>
+      </div>
     </section>
   );
 }
@@ -342,7 +385,7 @@ function Faq() {
     ],
     [
       "How does a student get access?",
-      "Through their tutorial centre or school. The centre adds students and gives each one a sign-in slip with a centre code.",
+      "Two ways. A student can create their own account, with or without a centre code. Or their tutorial centre adds them and gives them a sign-in slip.",
     ],
     [
       "What if the network goes off in the middle of a test?",
@@ -351,7 +394,7 @@ function Faq() {
     ["Does it work on a phone?", "Yes. Verity is designed for phones first and works in the browser, with nothing to install."],
     [
       "What does it cost?",
-      `Centres in the January pilot will hear about pricing directly before anything is charged. There is no payment on this site. To ask about it, WhatsApp ${WHATSAPP_DISPLAY} or email ${EMAIL}.`,
+      `The first test in one subject is free. After that, the Early Access pass gives a full year of JAMB and WAEC practice for ${CENTRE_PRICE} when your centre collects it, or ${ONLINE_PRICE} paid online. This price is available until ${OFFER_ENDS}. Questions? WhatsApp ${WHATSAPP_DISPLAY} or email ${EMAIL}.`,
     ],
   ];
   return (
