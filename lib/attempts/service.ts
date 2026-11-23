@@ -14,6 +14,8 @@ import {
 import type { AnswerItem } from "@/lib/validation/attempts";
 import { sittingSubjectOrder } from "@/lib/scoring/jamb";
 import { JAMB_SITTING } from "@/lib/assessments/kinds";
+import { decideStart, START_MESSAGES } from "@/lib/entitlements/pass";
+import { loadStudentAccess } from "@/lib/entitlements/access";
 
 /**
  * Attempt lifecycle (docs/08, docs/17). Every function here runs server-side with
@@ -148,6 +150,12 @@ export async function startAttempt(ctx: StudentContext, assessmentId: string): P
     throw new DomainError("assessment_closed", "This test has closed.", 409);
   }
 
+  // Early Access pass or the one free trial test (docs/09, D27). Checked after the resume
+  // path above, so a student mid-test never loses answers because of billing.
+  const access = await loadStudentAccess(ctx.student.id, now);
+  const decision = decideStart({ hasActivePass: Boolean(access.pass), format: assessment.format, attemptsStarted: access.attemptsStarted });
+  if (!decision.allowed) throw new DomainError(decision.reason, START_MESSAGES[decision.reason], 402);
+
   const { data: aq } = await db()
     .from("assessment_questions")
     .select("question_id, position")
@@ -206,7 +214,27 @@ export async function startAttempt(ctx: StudentContext, assessmentId: string): P
     console.error("[attempts] start failed", error.message);
     throw new DomainError("attempt_start_failed", "We couldn't start the test. Please try again.", 500);
   }
+  if (decision.via === "trial") await keepOnlyFirstTrialAttempt(ctx, (created as AttemptRow).id);
   return buildPayload(created as AttemptRow, assessment);
+}
+
+/**
+ * Two "Begin" taps on two different tests at the same moment could both pass the trial
+ * check. The earliest attempt keeps the trial; a later one is removed before the student
+ * sees a single question.
+ */
+async function keepOnlyFirstTrialAttempt(ctx: StudentContext, attemptId: string) {
+  const { data } = await db()
+    .from("assessment_attempts")
+    .select("id")
+    .eq("student_id", ctx.student.id)
+    .order("started_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(1);
+  if (data?.[0] && data[0].id !== attemptId) {
+    await db().from("assessment_attempts").delete().eq("id", attemptId).eq("status", "in_progress");
+    throw new DomainError("pass_required", START_MESSAGES.pass_required, 402);
+  }
 }
 
 /** English first, then the student's 3 subjects, each as one block of the sitting's questions. */

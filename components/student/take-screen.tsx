@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import * as store from "@/lib/offline/store";
 import { SyncEngine, type SyncSnapshot } from "@/lib/offline/sync-engine";
 import { prepareOfflineShell } from "@/lib/offline/app-shell";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 
 type Payload = {
   attempt_id: string;
@@ -22,7 +22,7 @@ type Payload = {
 
 type Phase =
   | { kind: "loading" }
-  | { kind: "error"; message: string }
+  | { kind: "error"; message: string; needsPass?: boolean }
   | { kind: "taking" };
 
 const SYNC_TEXT: Record<SyncSnapshot["state"], string> = {
@@ -98,7 +98,12 @@ export function TakeScreen({ assessmentId }: { assessmentId: string }) {
         if (r.body?.error?.code === "attempt_limit_reached") {
           setPhase({ kind: "error", message: "You have already taken this test." });
         } else {
-          setPhase({ kind: "error", message: r.body?.error?.message ?? "We couldn't open the test. Check your connection and try again." });
+          const code = r.body?.error?.code;
+          setPhase({
+            kind: "error",
+            message: r.body?.error?.message ?? "We couldn't open the test. Check your connection and try again.",
+            needsPass: code === "pass_required" || code === "trial_single_subject_only",
+          });
         }
         return null;
       }
@@ -292,7 +297,11 @@ export function TakeScreen({ assessmentId }: { assessmentId: string }) {
         <h1 className="font-serif text-2xl">We couldn’t open this test</h1>
         <p className="mt-2 text-lo">{phase.message}</p>
         <div className="mt-5 flex gap-3">
-          <Button onClick={() => window.location.reload()} variant="ghost">Try again</Button>
+          {phase.needsPass ? (
+            <a href="/app/pass" className={buttonClass("gold")}>Get the pass</a>
+          ) : (
+            <Button onClick={() => window.location.reload()} variant="ghost">Try again</Button>
+          )}
           <a href="/app" className="inline-flex min-h-11 items-center text-sm underline">Back to my tests</a>
         </div>
       </Shell>

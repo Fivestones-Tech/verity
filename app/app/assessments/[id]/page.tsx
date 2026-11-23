@@ -6,6 +6,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
+import { loadStudentAccess } from "@/lib/entitlements/access";
+import { decideStart, START_MESSAGES } from "@/lib/entitlements/pass";
 
 export const metadata: Metadata = { title: "Before you start" };
 
@@ -29,6 +31,9 @@ export default async function InstructionsPage({ params }: PageProps<"/app/asses
     ? await supabase.from("student_subjects").select("subject_id", { count: "exact", head: true }).eq("student_id", ctx.student.id)
     : { count: null };
   const subjectsMissing = a.format === "jamb_utme" && (mySubjects ?? 0) !== 3;
+  // Same rule the start route enforces; shown here so the student isn't surprised.
+  const access = await loadStudentAccess(ctx.student.id);
+  const gate = decideStart({ hasActivePass: Boolean(access.pass), format: a.format === "jamb_utme" ? "jamb_utme" : "single_subject", attemptsStarted: access.attemptsStarted });
 
   return (
     <div className="mx-auto max-w-xl">
@@ -55,10 +60,18 @@ export default async function InstructionsPage({ params }: PageProps<"/app/asses
           <ButtonLink href={`/app/results/${att.id}`}>See your result</ButtonLink>
         ) : a.status !== "active" ? (
           <p className="text-lo">This test is closed.</p>
+        ) : !gate.allowed ? (
+          <div className="space-y-3">
+            <p className="text-lo">{START_MESSAGES[gate.reason]}</p>
+            <ButtonLink href="/app/pass" variant="gold">Get the pass</ButtonLink>
+          </div>
         ) : subjectsMissing ? (
           <p className="text-lo">Your JAMB subjects aren’t set yet. Please ask your teacher to add them, then come back.</p>
         ) : (
-          <ButtonLink href={`/app/assessments/${a.id}/take`} variant="gold">Begin</ButtonLink>
+          <div className="space-y-2">
+            {gate.via === "trial" && <p className="text-sm text-lo">This is your free test. After it, you’ll need the Early Access pass for more.</p>}
+            <ButtonLink href={`/app/assessments/${a.id}/take`} variant="gold">Begin</ButtonLink>
+          </div>
         )}
       </div>
     </div>

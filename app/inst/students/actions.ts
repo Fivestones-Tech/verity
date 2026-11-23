@@ -8,6 +8,7 @@ import { DomainError } from "@/lib/api";
 import { normaliseStudentNumber } from "@/lib/auth/student-login";
 import { addStudent, importStudents, moveStudentToClass, previewStudents, resetStudentPassword, setStudentSubjects } from "@/lib/students/service";
 import type { Slip } from "@/components/institution/login-slips";
+import { decideJoinRequest } from "@/lib/students/join-requests";
 
 function msg(e: unknown) {
   if (e instanceof AuthError || e instanceof DomainError) return e.message;
@@ -96,4 +97,17 @@ export async function setSubjectsAction(_prev: SubjectsState, form: FormData): P
   } catch (e) {
     return { error: msg(e) };
   }
+}
+
+export async function joinRequestAction(form: FormData) {
+  const staff = await authorizeStaff(MANAGER_ROLES).catch(() => null);
+  if (!staff) return;
+  const id = z.uuid().safeParse(form.get("student_id"));
+  if (!id.success) return;
+  try {
+    await decideJoinRequest(staff, id.data, form.get("decision") === "accept");
+  } catch (e) {
+    msg(e);
+  }
+  revalidatePath("/inst/students");
 }
