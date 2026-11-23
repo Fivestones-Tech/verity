@@ -6,6 +6,8 @@ import { DomainError } from "@/lib/api";
 import { generatePassword, studentLoginEmail } from "@/lib/auth/student-login";
 import { parseCsv } from "@/lib/questions/csv";
 import { validateStudents, type StudentPreview } from "@/lib/students/import-validation";
+import { checkCombination, type RefSubjectLite } from "@/lib/students/subjects";
+import { loadSubjects } from "@/lib/questions/repo";
 
 const domain = () => process.env.STUDENT_LOGIN_DOMAIN ?? "students.verity.invalid";
 
@@ -29,10 +31,39 @@ export async function previewStudents(staff: StaffContext, file: File): Promise<
   }
   const { fields, rows } = parseCsv(await file.text());
   const ref = await refData(staff.institution.id);
-  return validateStudents({ fields, rows, existingNumbers: ref.existingNumbers, existingClasses: ref.classes.map((c) => c.name) });
+  const subjects = await jambSubjects(staff);
+  return validateStudents({ fields, rows, existingNumbers: ref.existingNumbers, existingClasses: ref.classes.map((c) => c.name), subjects });
 }
 
-async function createStudentAccount(staff: StaffContext, s: { full_name: string; student_number: string; class_id: string | null }) {
+/** JAMB subjects (English included, so it can be recognised and dropped). Empty for WAEC-only centres. */
+export async function jambSubjects(staff: StaffContext): Promise<RefSubjectLite[]> {
+  return (await loadSubjects(staff.institution.exam_focus)).filter((s) => s.exam_code === "JAMB").map((s) => ({ id: s.id, name: s.name, code: s.code }));
+}
+
+async function writeSubjects(institutionId: string, studentId: string, subjectIds: string[]) {
+  const admin = createSupabaseAdminClient();
+  await admin.from("student_subjects").delete().eq("student_id", studentId);
+  if (subjectIds.length) {
+    const { error } = await admin.from("student_subjects").insert(subjectIds.map((subject_id) => ({ student_id: studentId, subject_id, institution_id: institutionId })));
+    if (error) {
+      console.error("[students] subjects insert failed", error.message);
+      throw new DomainError("subjects_failed", "We couldn't save the subjects. Please try again.", 500);
+    }
+  }
+}
+
+/** Set a student's 3 JAMB subjects (English is always included). */
+export async function setStudentSubjects(staff: StaffContext, studentId: string, subjectIds: string[]) {
+  const admin = createSupabaseAdminClient();
+  const { data: st } = await admin.from("students").select("institution_id").eq("id", studentId).maybeSingle();
+  if (!st || st.institution_id !== staff.institution.id) throw new DomainError("student_not_found", "We couldn't find that student.", 404);
+  const check = checkCombination(subjectIds, await jambSubjects(staff));
+  if (check.errors.length) throw new DomainError("invalid_subjects", `Please ${check.errors[0]}.`);
+  await writeSubjects(staff.institution.id, studentId, check.ids);
+  await audit({ actorUserId: staff.userId, institutionId: staff.institution.id, action: "student.subjects_set", resourceType: "student", resourceId: studentId, metadata: { subject_ids: check.ids } });
+}
+
+async function createStudentAccount(staff: StaffContext, s: { full_name: string; student_number: string; class_id: string | null; subject_ids?: string[] }) {
   const admin = createSupabaseAdminClient();
   const password = generatePassword();
   const { data, error } = await admin.auth.admin.createUser({
@@ -46,17 +77,24 @@ async function createStudentAccount(staff: StaffContext, s: { full_name: string;
     return null;
   }
   await admin.from("profiles").update({ full_name: s.full_name }).eq("id", data.user.id);
-  const { error: sErr } = await admin.from("students").insert({
+  const { data: created, error: sErr } = await admin.from("students").insert({
     profile_id: data.user.id,
     institution_id: staff.institution.id,
     full_name: s.full_name,
     student_number: s.student_number,
     class_id: s.class_id,
-  });
-  if (sErr) {
-    console.error("[students] insert failed", sErr.message);
+  }).select("id").single();
+  if (sErr || !created) {
+    console.error("[students] insert failed", sErr?.message);
     await admin.auth.admin.deleteUser(data.user.id);
     return null;
+  }
+  if (s.subject_ids?.length) {
+    try {
+      await writeSubjects(staff.institution.id, created.id, s.subject_ids);
+    } catch {
+      // the account exists; subjects can be set from the Students page
+    }
   }
   return password;
 }
@@ -81,6 +119,7 @@ export async function importStudents(staff: StaffContext, file: File) {
       full_name: s.full_name,
       student_number: s.student_number,
       class_id: s.class_name ? classId.get(s.class_name.toLowerCase()) ?? null : null,
+      subject_ids: s.subject_ids,
     });
     if (password) slips.push({ full_name: s.full_name, student_number: s.student_number, class_name: s.class_name, password });
     else failed.push(s.student_number);

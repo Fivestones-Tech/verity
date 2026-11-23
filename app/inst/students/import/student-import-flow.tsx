@@ -39,7 +39,7 @@ export function StudentImportFlow({ centreCode, centreName }: { centreCode: stri
     <div className="space-y-5">
       <Card>
         <p className="text-sm text-lo">
-          Use the <a className="text-pine underline" href="/templates/verity-student-template.csv" download>student template</a>: full_name, student_number and (optional) class. Verity creates a password for each student and gives you printable sign-in slips.
+          Use the <a className="text-pine underline" href="/templates/verity-student-template.csv" download>student template</a>: full_name, student_number, and optionally class and subjects. For subjects, list the 3 JAMB subjects besides English, for example “Physics; Chemistry; Biology”. Verity creates a password for each student and gives you printable sign-in slips.
         </p>
         <div className="mt-4">
           <Label htmlFor="file">CSV file</Label>
@@ -57,6 +57,7 @@ export function StudentImportFlow({ centreCode, centreName }: { centreCode: stri
           {preview.headerErrors.map((e) => <Notice key={e} tone="error">{e}</Notice>)}
           <Card>
             <p className="text-lg"><span className="num font-semibold">{preview.valid.length}</span> of <span className="num">{preview.totalRows}</span> students are ready to add.</p>
+            {preview.valid.some((r) => r.subject_ids.length > 0) && <p className="mt-1 text-sm text-lo"><span className="num">{preview.valid.filter((r) => r.subject_ids.length > 0).length}</span> have their JAMB subjects set.</p>}
             {preview.newClasses.length > 0 && <p className="mt-1 text-sm text-lo">New classes will be created: {preview.newClasses.join(", ")}</p>}
             {preview.invalid.length > 0 && (
               <table className="grid-table mt-3 text-sm">

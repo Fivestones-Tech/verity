@@ -234,6 +234,61 @@ try {
   check((await s.locator("main").innerText()).includes("· mock"), "student sees the mock on the home screen");
   await shot(s, "15-student-home-with-mock");
 
+  // ---------------- full JAMB mock: English + the student's 3 subjects ----------------
+  // Adaeze's subjects came from the spreadsheet (Mathematics; Physics; Chemistry).
+  // Seed a few published English/Physics/Chemistry questions directly (maths came through the UI above).
+  const { data: inst } = await db.from("institutions").select("id").eq("code", centreCode).single();
+  const { data: staffRows } = await db.from("institution_memberships").select("user_id, role").eq("institution_id", inst.id);
+  const ownerId = staffRows.find((r) => r.role === "owner").user_id;
+  const teacherId = staffRows.find((r) => r.role !== "owner").user_id;
+  const { data: jambSubs } = await db.from("subjects").select("id, code, examination_id, exam:examinations!inner(code)").eq("exam.code", "JAMB").in("code", ["ENG", "PHY", "CHM"]);
+  for (const sub of jambSubs) {
+    const { data: tp } = await db.from("topics").insert({ subject_id: sub.id, name: `${sub.code} basics`, institution_id: inst.id }).select().single();
+    for (let i = 0; i < 2; i++) {
+      const { data: q } = await db.from("questions").insert({ subject_id: sub.id, topic_id: tp.id, examination_id: sub.examination_id, institution_id: inst.id, question_text: `${sub.code} question ${i + 1}`, difficulty: "easy", source: "original", status: "published", created_by: teacherId, reviewed_by: ownerId }).select().single();
+      await db.from("question_options").insert(["A", "B", "C", "D"].map((k) => ({ question_id: q.id, option_key: k, option_text: `${sub.code} option ${k}`, is_correct: k === "A" })));
+    }
+  }
+  await t.goto(`${BASE}/inst/students`);
+  await t.waitForLoadState("networkidle");
+  check((await t.getByRole("row", { name: /Adaeze Okafor/ }).innerText()).includes("Chemistry, Mathematics, Physics"), "subjects from the spreadsheet show on the Students page");
+  await t.goto(`${BASE}/inst/assessments/new?kind=jamb_full`);
+  await t.waitForLoadState("networkidle");
+  check((await t.inputValue("#english_questions")) === "60" && (await t.inputValue("#duration_minutes")) === "120", "full mock defaults to the real exam (60 English, 2 hours)");
+  await t.fill("#english_questions", "2");
+  await t.fill("#other_questions", "2");
+  await shot(t, "16-full-jamb-builder");
+  await t.getByRole("button", { name: "Create and open now" }).click();
+  await t.waitForURL(/\/inst\/assessments\/[0-9a-f-]+\?created=1/);
+  const sittingUrl = t.url().split("?")[0];
+  check((await t.locator("main").innerText()).toLowerCase().includes("full jamb mock"), "full JAMB mock created");
+
+  await s.goto(`${BASE}/app`);
+  await s.waitForLoadState("networkidle");
+  await s.getByRole("link", { name: "Start" }).first().click();
+  await s.getByRole("link", { name: "Begin" }).click();
+  await s.waitForURL(/\/take$/);
+  const tabs = s.getByRole("navigation", { name: "Subjects" });
+  await tabs.waitFor();
+  const tabText = await tabs.innerText();
+  check(/English/.test(tabText) && tabText.includes("Mathematics") && tabText.includes("Physics") && tabText.includes("Chemistry"), "test screen shows English + the student's 3 subjects");
+  // answer the first English question correctly (option text ends in "A" for seeded ones)
+  await s.getByText(/ENG option A/).first().click();
+  await tabs.getByRole("button", { name: /Physics/ }).click();
+  check((await s.locator("header.sticky").innerText()).includes("Physics · Q 1"), "subject tab jumps to that paper");
+  await shot(s, "17-full-jamb-taking");
+  await s.waitForFunction(() => document.querySelector("[data-testid=sync-state]")?.getAttribute("data-state") === "synced", null, { timeout: 40_000 });
+  await s.getByRole("button", { name: "Submit" }).click();
+  await s.getByRole("dialog").getByRole("button", { name: "Submit" }).click();
+  await s.waitForURL(/\/app\/results\//, { timeout: 30_000 });
+  await s.getByText("Result slip").waitFor();
+  const sittingResult = await s.locator("main").innerText();
+  check(sittingResult.includes("/ 400") && /JAMB-style score/.test(sittingResult), "result shows a JAMB score out of 400");
+  await shot(s, "18-full-jamb-result");
+  await t.goto(sittingUrl);
+  check(/jamb score \/400/i.test(await t.locator("main").innerText()), "teacher sees JAMB scores");
+  await shot(t, "19-full-jamb-teacher");
+
   await phone.close(); // flushes the video
   await ownerCtx.close();
   await teacherCtx.close();

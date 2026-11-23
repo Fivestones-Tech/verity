@@ -1,4 +1,4 @@
-full_name,student_number,class
-Adaeze Okafor,VB001,JAMB Batch A
-Tunde Bakare,VB002,JAMB Batch A
-Ngozi Eze,VB003,JAMB Batch B
+full_name,student_number,class,subjects
+Adaeze Okafor,VB001,JAMB Batch A,Mathematics; Physics; Chemistry
+Tunde Bakare,VB002,JAMB Batch A,Government; Literature in English; CRS
+Ngozi Eze,VB003,JAMB Batch B,

@@ -43,7 +43,7 @@ export default async function StudentHome() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">{t.name}</p>
-                      <p className="num text-sm text-lo">{t.subject?.name}{t.assessment_type === "mock" ? " · mock" : ""} · {t.questionCount} questions · {Math.round(t.duration_seconds / 60)} min{t.end_at ? ` · closes ${formatDateTime(t.end_at)}` : ""}</p>
+                      <p className="num text-sm text-lo">{t.format === "jamb_utme" ? "English + your 3 subjects · full JAMB mock" : `${t.subject?.name ?? ""}${t.assessment_type === "mock" ? " · mock" : ""}`} · {t.questionCount} questions · {Math.round(t.duration_seconds / 60)} min{t.end_at ? ` · closes ${formatDateTime(t.end_at)}` : ""}</p>
                     </div>
                     <ButtonLink href={`/app/assessments/${t.id}`} variant={i === 0 ? "gold" : "primary"}>Start</ButtonLink>
                   </div>

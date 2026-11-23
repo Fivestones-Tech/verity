@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { kindLabel } from "@/lib/assessments/kinds";
+import { testLabel } from "@/lib/assessments/kinds";
 import { notFound } from "next/navigation";
 import { requireStaffPage } from "@/lib/auth/session";
 import { hasAnyRole, AUTHOR_ROLES } from "@/lib/auth/roles";
@@ -23,7 +23,7 @@ export default async function AssessmentResultsPage({ params, searchParams }: Pa
 
   return (
     <>
-      <PageHeader eyebrow={`${a.subject?.name ?? ""} · ${kindLabel(a.assessment_type)}`} title={a.name}>
+      <PageHeader eyebrow={`${a.subject?.name ?? "English + 3 subjects"} · ${testLabel(a.assessment_type, a.format)}`} title={a.name}>
         <a href={`/inst/assessments/${a.id}/export`} className="inline-flex min-h-11 items-center rounded-full border border-paper-line px-5 font-mono text-xs uppercase">Download CSV</a>
       </PageHeader>
       {sp.created === "1" && (
@@ -89,9 +89,9 @@ export default async function AssessmentResultsPage({ params, searchParams }: Pa
       ) : (
         <div className="overflow-x-auto">
           <table className="grid-table text-sm">
-            <thead><tr><th>Student</th><th>Class</th><th>Status</th><th className="text-right">Score</th><th className="text-right">%</th><th className="text-right">Blank</th><th className="text-right">Time</th></tr></thead>
+            <thead><tr><th>Student</th><th>Class</th><th>Status</th><th className="text-right">Score</th><th className="text-right">%</th><th className="text-right">Blank</th><th className="text-right">Time</th>{r.isSitting && <th>JAMB score /400</th>}</tr></thead>
             <tbody>
-              {r.rows.map(({ student: s, attempt: at }) => (
+              {r.rows.map(({ student: s, attempt: at, jamb }) => (
                 <tr key={s.id}>
                   <td>{s.full_name}<div className="num text-xs text-lo">{s.student_number}</div></td>
                   <td>{s.class_name ?? "—"}</td>
@@ -103,6 +103,16 @@ export default async function AssessmentResultsPage({ params, searchParams }: Pa
                   <td className="n">{at && at.status !== "in_progress" ? pct(at.percentage) : "—"}</td>
                   <td className="n">{at && at.status !== "in_progress" ? at.unanswered_count : "—"}</td>
                   <td className="n">{at && at.status !== "in_progress" ? formatDuration(at.time_used_seconds) : "—"}</td>
+                  {r.isSitting && (
+                    <td>
+                      {jamb ? (
+                        <>
+                          <span className="num font-semibold">{jamb.total}</span>
+                          <div className="num text-xs text-lo">{jamb.subjects.map((x) => `${x.name} ${x.score}`).join(" · ")}</div>
+                        </>
+                      ) : "—"}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

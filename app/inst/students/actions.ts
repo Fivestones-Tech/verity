@@ -6,7 +6,7 @@ import { authorizeStaff, AuthError } from "@/lib/auth/session";
 import { MANAGER_ROLES } from "@/lib/auth/roles";
 import { DomainError } from "@/lib/api";
 import { normaliseStudentNumber } from "@/lib/auth/student-login";
-import { addStudent, importStudents, moveStudentToClass, previewStudents, resetStudentPassword } from "@/lib/students/service";
+import { addStudent, importStudents, moveStudentToClass, previewStudents, resetStudentPassword, setStudentSubjects } from "@/lib/students/service";
 import type { Slip } from "@/components/institution/login-slips";
 
 function msg(e: unknown) {
@@ -82,4 +82,18 @@ export async function moveClassAction(form: FormData) {
   const classId = String(form.get("class_id") ?? "") || null;
   await moveStudentToClass(staff, String(form.get("student_id") ?? ""), classId);
   revalidatePath("/inst/students");
+}
+
+export type SubjectsState = { error: string | null; saved?: boolean };
+
+export async function setSubjectsAction(_prev: SubjectsState, form: FormData): Promise<SubjectsState> {
+  try {
+    const staff = await authorizeStaff(MANAGER_ROLES);
+    const ids = form.getAll("subject_id").map(String).filter(Boolean);
+    await setStudentSubjects(staff, String(form.get("student_id") ?? ""), ids);
+    revalidatePath("/inst/students");
+    return { error: null, saved: true };
+  } catch (e) {
+    return { error: msg(e) };
+  }
 }

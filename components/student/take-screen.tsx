@@ -16,7 +16,7 @@ type Payload = {
   started_at: string;
   expires_at: string;
   server_now: string;
-  questions: { id: string; number: number; text: string; options: store.LocalQuestion["options"] }[];
+  questions: { id: string; number: number; subject?: string; text: string; options: store.LocalQuestion["options"] }[];
   saved: { question_id: string; selected_option_id: string | null; seq: number }[];
 };
 
@@ -122,7 +122,7 @@ export function TakeScreen({ assessmentId }: { assessmentId: string }) {
       };
       await store.putAttempt(local);
       await store.putQuestions(
-        p.questions.map((q) => ({ key: store.qKey(p.attempt_id, q.id), attemptId: p.attempt_id, questionId: q.id, number: q.number, text: q.text, options: q.options })),
+        p.questions.map((q) => ({ key: store.qKey(p.attempt_id, q.id), attemptId: p.attempt_id, questionId: q.id, number: q.number, subject: q.subject, text: q.text, options: q.options })),
       );
       await store.mergeServerAnswers(p.attempt_id, p.saved);
       return (await store.getAttempt(p.attempt_id)) ?? local;
@@ -308,6 +308,18 @@ export function TakeScreen({ assessmentId }: { assessmentId: string }) {
   }
   if (!attempt || !q) return null;
 
+  // A full JAMB sitting has one paper per subject: show tabs to jump between them.
+  const papers: { name: string; first: number; count: number; answered: number }[] = [];
+  questions.forEach((x, i) => {
+    const name = x.subject ?? "";
+    const last = papers[papers.length - 1];
+    const done = answers.get(x.questionId) ? 1 : 0;
+    if (last && last.name === name) { last.count++; last.answered += done; }
+    else papers.push({ name, first: i, count: 1, answered: done });
+  });
+  const multiPaper = papers.length > 1;
+  const paperOf = (i: number) => papers.findLast((p) => p.first <= i) ?? papers[0];
+
   const mins = remainingMs == null ? "--" : String(Math.floor(remainingMs / 60000)).padStart(2, "0");
   const secs = remainingMs == null ? "--" : String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0");
   const warn = remainingMs !== null && remainingMs <= 5 * 60_000;
@@ -332,8 +344,26 @@ export function TakeScreen({ assessmentId }: { assessmentId: string }) {
             ⏱ {mins}:{secs}
           </p>
         </div>
+        {multiPaper && (
+          <nav aria-label="Subjects" className="mt-2 flex flex-wrap gap-1.5 pb-1">
+            {papers.map((p) => {
+              const here = paperOf(index).first === p.first;
+              return (
+                <button
+                  key={p.first}
+                  type="button"
+                  onClick={() => go(p.first)}
+                  aria-current={here ? "true" : undefined}
+                  className={`min-h-9 shrink-0 rounded-full border px-3 text-sm ${here ? "border-pine bg-pine text-ink-hi" : "border-paper-line"}`}
+                >
+                  {p.name} <span className="num">{p.answered}/{p.count}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
         <div className="mt-1 flex items-center justify-between gap-3 text-sm">
-          <span className="num">Q {index + 1} / {questions.length}</span>
+          <span className="num">{multiPaper ? <>{paperOf(index).name} · Q {index - paperOf(index).first + 1} / {paperOf(index).count}</> : <>Q {index + 1} / {questions.length}</>}</span>
           <span data-testid="sync-state" data-state={sync.state} className="flex items-center gap-1.5 text-right text-lo">
             <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${sync.state === "synced" ? "bg-pine" : sync.state === "syncing" ? "bg-gold" : "border border-lo"}`} />
             {syncLabel}
@@ -374,25 +404,29 @@ export function TakeScreen({ assessmentId }: { assessmentId: string }) {
           </button>
           <Button onClick={() => setConfirming(true)} disabled={locked}>{locked ? "Submitting…" : "Submit"}</Button>
         </div>
-        {gridOpen && (
-          <div className="grid grid-cols-8 gap-1.5 pb-3 sm:grid-cols-10">
-            {questions.map((x, i) => {
+        {gridOpen && papers.map((p) => (
+          <div key={p.first} className="pb-3">
+          {multiPaper && <p className="eyebrow mb-1.5">{p.name}</p>}
+          <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10">
+            {questions.slice(p.first, p.first + p.count).map((x, j) => {
+              const i = p.first + j;
               const done = Boolean(answers.get(x.questionId));
               return (
                 <button
                   key={x.questionId}
                   type="button"
                   onClick={() => { go(i); setGridOpen(false); }}
-                  aria-label={`Question ${i + 1}${done ? ", answered" : ", not answered"}${marked.has(x.questionId) ? ", marked" : ""}`}
+                  aria-label={`${multiPaper ? `${p.name} question ${j + 1}` : `Question ${i + 1}`}${done ? ", answered" : ", not answered"}${marked.has(x.questionId) ? ", marked" : ""}`}
                   className={`num relative h-10 rounded-[3px] border text-sm ${done ? "border-pine bg-pine text-ink-hi" : "border-paper-line"} ${i === index ? "ring-2 ring-gold" : ""}`}
                 >
-                  {i + 1}
+                  {multiPaper ? j + 1 : i + 1}
                   {marked.has(x.questionId) && <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-gold" />}
                 </button>
               );
             })}
           </div>
-        )}
+          </div>
+        ))}
       </footer>
 
       {confirming && (

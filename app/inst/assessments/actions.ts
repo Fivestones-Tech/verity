@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { authorizeStaff, AuthError } from "@/lib/auth/session";
 import { AUTHOR_ROLES } from "@/lib/auth/roles";
 import { DomainError } from "@/lib/api";
-import { createAssessmentSchema } from "@/lib/validation/assessment";
-import { createAssessment, setAssessmentStatus } from "@/lib/assessments/service";
+import { createAssessmentSchema, createSittingSchema } from "@/lib/validation/assessment";
+import { createAssessment, createJambSitting, setAssessmentStatus } from "@/lib/assessments/service";
 
 export type BuilderState = { error: string | null };
 
@@ -53,4 +53,38 @@ export async function setStatusAction(form: FormData) {
   await setAssessmentStatus(await authorizeStaff(AUTHOR_ROLES), id, status);
   revalidatePath(`/inst/assessments/${id}`);
   redirect(`/inst/assessments/${id}`);
+}
+
+export async function createSittingAction(_p: BuilderState, form: FormData): Promise<BuilderState> {
+  const parsed = createSittingSchema.safeParse({
+    name: form.get("name"),
+    english_questions: form.get("english_questions"),
+    other_questions: form.get("other_questions"),
+    duration_minutes: form.get("duration_minutes"),
+    assign_to: form.getAll("assign_to"),
+    open_now: form.get("open_now") === "1",
+    end_at: (form.get("end_at_iso") as string) || undefined,
+    instructions: (form.get("instructions") as string) || undefined,
+  });
+  if (!parsed.success) {
+    const path = String(parsed.error.issues[0]?.path[0] ?? "");
+    const hints: Record<string, string> = {
+      name: "Give the mock a name.",
+      english_questions: "English questions must be between 1 and 60.",
+      other_questions: "Questions per subject must be between 1 and 40.",
+      duration_minutes: "Time allowed must be between 1 and 240 minutes.",
+      assign_to: "Choose who should take the mock.",
+    };
+    return { error: hints[path] ?? "Please check the form." };
+  }
+  let id: string;
+  try {
+    id = await createJambSitting(await authorizeStaff(AUTHOR_ROLES), parsed.data);
+  } catch (e) {
+    if (e instanceof AuthError || e instanceof DomainError) return { error: e.message };
+    console.error("[assessments] sitting create failed", e);
+    return { error: "We couldn't create the mock. Please try again." };
+  }
+  revalidatePath("/inst/assessments");
+  redirect(`/inst/assessments/${id}?created=1`);
 }

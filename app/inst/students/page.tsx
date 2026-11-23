@@ -6,7 +6,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, EmptyState, Notice, PageHeader } from "@/components/ui/card";
 import { SelectField } from "@/components/ui/field";
-import { AddStudentForm, ResetPasswordButton } from "./student-forms";
+import { AddStudentForm, ResetPasswordButton, SubjectsForm } from "./student-forms";
+import { jambSubjects } from "@/lib/students/service";
 import { moveClassAction } from "./actions";
 
 export const metadata: Metadata = { title: "Students" };
@@ -33,6 +34,14 @@ export default async function StudentsPage({ searchParams }: PageProps<"/inst/st
   if (search) q = q.or(`full_name.ilike.%${search.replace(/[%,()]/g, "")}%,student_number.ilike.%${search.replace(/[%,()]/g, "")}%`);
   const { data: students, count, error } = await q;
   const className = new Map((classes ?? []).map((c) => [c.id, c.name]));
+  // JAMB subject combinations (English is compulsory, so only the other 3 are listed)
+  const subjectList = (await jambSubjects(staff)).filter((s) => s.code !== "ENG").sort((a, b) => a.name.localeCompare(b.name));
+  const subjectName = new Map(subjectList.map((s) => [s.id, s.name]));
+  const ids = (students ?? []).map((s) => s.id);
+  const { data: ss } = ids.length ? await supabase.from("student_subjects").select("student_id, subject_id").in("student_id", ids) : { data: [] };
+  const subjectsOf = new Map<string, string[]>();
+  for (const r of ss ?? []) subjectsOf.set(r.student_id, [...(subjectsOf.get(r.student_id) ?? []), r.subject_id]);
+  const showSubjects = subjectList.length > 0;
   const total = count ?? 0;
 
   return (
@@ -73,7 +82,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/inst/st
       ) : (
         <div className="overflow-x-auto">
           <table className="grid-table text-sm">
-            <thead><tr><th>Name</th><th>Student no.</th><th>Class</th>{canManage && <th>Sign-in</th>}</tr></thead>
+            <thead><tr><th>Name</th><th>Student no.</th><th>Class</th>{showSubjects && <th>JAMB subjects (with English)</th>}{canManage && <th>Sign-in</th>}</tr></thead>
             <tbody>
               {(students ?? []).map((s) => (
                 <tr key={s.id}>
@@ -93,6 +102,15 @@ export default async function StudentsPage({ searchParams }: PageProps<"/inst/st
                       className.get(s.class_id ?? "") ?? "—"
                     )}
                   </td>
+                  {showSubjects && (
+                    <td>
+                      {canManage ? (
+                        <SubjectsForm studentId={s.id} studentName={s.full_name} subjects={subjectList} current={(subjectsOf.get(s.id) ?? []).sort((a, b) => (subjectName.get(a) ?? "").localeCompare(subjectName.get(b) ?? ""))} />
+                      ) : (
+                        (subjectsOf.get(s.id) ?? []).map((id) => subjectName.get(id)).sort().join(", ") || "Not set"
+                      )}
+                    </td>
+                  )}
                   {canManage && <td><ResetPasswordButton studentId={s.id} centreCode={staff.institution.code} centreName={staff.institution.name} /></td>}
                 </tr>
               ))}

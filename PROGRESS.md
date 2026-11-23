@@ -5,8 +5,8 @@
 ## Current state
 
 - **Current phase:** Pilot slice built (Phases 0–3 + topic_performance). See `docs/13`.
-- **Last completed task:** One-subject weekly mocks (2026-11-22)
-- **Next task:** Before Jan 11: create the hosted Supabase project + Vercel deploy, apply migrations, register the pilot centre. Then Phase 4 readiness + teacher views (Jan 31), and the full JAMB sitting (English + 3 subjects, 2 h) before end of Feb.
+- **Last completed task:** Full JAMB mock sitting (2026-11-22)
+- **Next task:** Before Jan 11: create the hosted Supabase project + Vercel deploy, apply migrations, register the pilot centre. Then Phase 4 readiness + teacher views (Jan 31).
 - **Blocked on / waiting for founder:** see "Open questions" below
 
 ## Open questions for the founder
@@ -29,6 +29,12 @@ Format:
 - Decisions/assumptions: anything the founder should know
 - Next: the very next task
 ```
+
+### 2026-11-22 — Full JAMB mock sitting
+- Did: migration `20261122000300_jamb_full_sitting.sql` (`student_subjects` with RLS, `assessments.format` = single_subject | jamb_utme, subject_id nullable for a sitting). Student subjects from the CSV "subjects" column or the Students page. Builder `/inst/assessments/new?kind=jamb_full` (defaults 60 English + 40 per subject, 120 min). Each attempt gets English then the student's 3 subjects (`sittingBlocks`). Take screen subject tabs and grouped grid. Results JAMB-style (`lib/scoring/jamb.ts`, `lib/assessments/jamb-results.ts`): each subject /100, total /400, on the result slip, teacher table and CSV.
+- Verified: 65 unit, 47 integration (new `jamb-sitting.test.ts` incl. RLS on student_subjects and cross-centre writes), e2e incl. full sitting, lint, typecheck, build.
+- Decisions/assumptions: D22–D24.
+- Next: hosted environments (waiting on founder tokens), Phase 4 readiness + teacher views.
 
 ### 2026-11-22 — Weekly mocks (one subject per mock)
 - Did: `assessment_type = 'mock'` from the builder (`/inst/assessments/new?kind=mock`). The server picks topics from the whole syllabus (form topic ids ignored). Defaults in `lib/assessments/kinds.ts`: JAMB English 60 Q / 40 min, other JAMB subjects 40 Q / 30 min, WAEC 50 Q / 60 min; teachers can change them. Mocks are labelled on the tests list, results, instructions and student home.

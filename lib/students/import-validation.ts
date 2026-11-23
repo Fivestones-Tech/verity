@@ -1,10 +1,14 @@
 import { normaliseStudentNumber } from "@/lib/auth/student-login";
+import { parseSubjectCell, type RefSubjectLite } from "@/lib/students/subjects";
 
-/** Student CSV: full_name, student_number, class (optional). Pure validation. */
-export const STUDENT_COLUMNS = ["full_name", "student_number", "class"] as const;
+/**
+ * Student CSV: full_name, student_number, class (optional), subjects (optional:
+ * the 3 JAMB subjects besides English, e.g. "Physics; Chemistry; Biology"). Pure validation.
+ */
+export const STUDENT_COLUMNS = ["full_name", "student_number", "class", "subjects"] as const;
 export const MAX_STUDENT_ROWS = 1000;
 
-export type StudentRow = { rowNumber: number; full_name: string; student_number: string; class_name: string | null };
+export type StudentRow = { rowNumber: number; full_name: string; student_number: string; class_name: string | null; subject_ids: string[] };
 export type StudentRowError = { rowNumber: number; errors: string[]; preview: string };
 export type StudentPreview = {
   headerErrors: string[];
@@ -19,6 +23,8 @@ export function validateStudents(args: {
   rows: Record<string, unknown>[];
   existingNumbers: Set<string>;
   existingClasses: string[];
+  /** JAMB subjects, for the optional "subjects" column */
+  subjects?: RefSubjectLite[];
 }): StudentPreview {
   const out: StudentPreview = { headerErrors: [], valid: [], invalid: [], newClasses: [], totalRows: args.rows.length };
   const have = new Set(args.fields.map((f) => f.trim().toLowerCase()));
@@ -55,6 +61,8 @@ export function validateStudents(args: {
     if (number && seen.has(number)) errors.push(`duplicate of row ${seen.get(number)} in this file`);
     else if (number) seen.set(number, rowNumber);
     if (cls && cls.length > 60) errors.push("class name is too long");
+    const subj = parseSubjectCell(get("subjects"), args.subjects ?? []);
+    errors.push(...subj.errors);
 
     if (errors.length) {
       out.invalid.push({ rowNumber, errors, preview: name || number });
@@ -65,7 +73,7 @@ export function validateStudents(args: {
       className = classLower.get(cls.toLowerCase()) ?? newClasses.get(cls.toLowerCase()) ?? cls;
       if (!classLower.has(cls.toLowerCase())) newClasses.set(cls.toLowerCase(), className);
     }
-    out.valid.push({ rowNumber, full_name: name, student_number: number, class_name: className });
+    out.valid.push({ rowNumber, full_name: name, student_number: number, class_name: className, subject_ids: subj.ids });
   });
   out.newClasses = [...newClasses.values()];
   return out;
